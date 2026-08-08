@@ -1,0 +1,60 @@
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { AuthProvider } from "@/components/AuthProvider";
+import AuthGate from "@/components/AuthGate";
+import { Toaster } from "react-hot-toast";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata = {
+  title: "CareOS — Family Care Coordination",
+  description: "One shared space for medications, appointments, documents, and communication. Built for families caring for aging parents or managing chronic conditions.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CareOS",
+  },
+};
+
+export const viewport = {
+  themeColor: "#f43f5e",
+};
+
+const serviceWorkerScript = `
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function (err) {
+        console.error("Service worker registration failed:", err);
+      });
+    });
+  }
+`;
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <AuthProvider>
+          <AuthGate>{children}</AuthGate>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#fff',
+                color: '#0f172a',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                fontSize: '14px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              },
+            }}
+          />
+        </AuthProvider>
+        <script dangerouslySetInnerHTML={{ __html: serviceWorkerScript }} />
+      </body>
+    </html>
+  );
+}
