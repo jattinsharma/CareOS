@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import {
   Heart,
   Pill,
@@ -22,20 +21,6 @@ import {
   Smartphone,
 } from "lucide-react";
 import InstallPrompt from "@/components/InstallPrompt";
-
-function friendlyAuthError(err) {
-  const code = err?.code || "";
-  const map = {
-    "auth/popup-closed-by-user": "Sign-in was cancelled.",
-    "auth/unauthorized-domain":
-      "This domain isn't authorized for sign-in yet. Add it in Firebase Console → Authentication → Settings → Authorized domains.",
-    "auth/operation-not-allowed":
-      "This sign-in method isn't enabled. Enable it in Firebase Console → Authentication → Sign-in method.",
-    "auth/too-many-requests": "Too many attempts. Please wait a moment and try again.",
-    "auth/network-request-failed": "Network error. Check your connection and try again.",
-  };
-  return map[code] || err?.message || "Something went wrong. Please try again.";
-}
 
 const navLinks = [
   { href: "#features", label: "Features" },
@@ -157,29 +142,18 @@ const footerCompany = [
 ];
 
 export default function LandingPage() {
-  const { user, loading, loginWithGoogle } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
-  const [authing, setAuthing] = useState(false);
 
   // Logged-in users go straight to the app.
   useEffect(() => {
     if (!loading && user) router.replace("/dashboard");
   }, [loading, user, router]);
 
-  async function handleAuth() {
-    if (authing) return;
-    setAuthing(true);
-    try {
-      await loginWithGoogle();
-      toast.success("Signed in with Google!");
-      router.push("/dashboard");
-    } catch (err) {
-      toast.error(friendlyAuthError(err));
-    } finally {
-      setAuthing(false);
-    }
+  function handleAuth() {
+    router.push("/login");
   }
 
   function scrollToId(e, id) {
@@ -225,7 +199,6 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={handleAuth}
-              disabled={authing}
               className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
             >
               Sign In
@@ -233,7 +206,6 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={handleAuth}
-              disabled={authing}
               className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-colors hover:bg-rose-600 active:bg-rose-700 disabled:opacity-60"
             >
               Get Started
@@ -272,7 +244,6 @@ export default function LandingPage() {
                   setMobileOpen(false);
                   handleAuth();
                 }}
-                disabled={authing}
                 className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
               >
                 Sign In
@@ -283,7 +254,6 @@ export default function LandingPage() {
                   setMobileOpen(false);
                   handleAuth();
                 }}
-                disabled={authing}
                 className="w-full rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-colors hover:bg-rose-600 disabled:opacity-60"
               >
                 Get Started
@@ -312,7 +282,7 @@ export default function LandingPage() {
             chronic conditions.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <button type="button" onClick={handleAuth} disabled={authing} className={ctaBtn}>
+            <button type="button" onClick={handleAuth} className={ctaBtn}>
               Get Started Free
               <ArrowRight className="h-4 w-4" />
             </button>
@@ -453,7 +423,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button type="button" onClick={handleAuth} disabled={authing} className={ctaBtn + " mt-8 w-full"}>
+              <button type="button" onClick={handleAuth} className={ctaBtn + " mt-8 w-full"}>
                 Get Started
                 <ArrowRight className="h-4 w-4" />
               </button>
@@ -566,7 +536,6 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={handleAuth}
-              disabled={authing}
               className="relative mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 font-semibold text-rose-600 shadow-lg shadow-rose-900/20 transition-all hover:bg-rose-50 hover:shadow-xl active:scale-[0.98] disabled:opacity-60"
             >
               Get Started Free

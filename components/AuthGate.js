@@ -4,8 +4,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-// Routes anyone can visit without signing in (public marketing pages).
-const PUBLIC_ROUTES = ["/", "/pricing"];
+// Routes anyone can visit without signing in (public marketing + auth pages).
+const PUBLIC_ROUTES = ["/", "/pricing", "/login"];
 
 /**
  * Route guard:
