@@ -16,6 +16,13 @@ import {
 import Navbar from "@/components/Navbar";
 import { Pill, Plus, Check, Clock, X, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  formatTime12h,
+  nowRounded15,
+  FREQUENCY_OPTIONS,
+  frequencyLabel,
+} from "@/lib/medUtils";
+import TimePicker from "@/components/TimePicker";
 
 export default function MedicationsPage() {
   const { user } = useAuth();
@@ -26,7 +33,7 @@ export default function MedicationsPage() {
     name: "",
     dosage: "",
     frequency: "Daily",
-    times: "08:00",
+    times: nowRounded15(),
     notes: "",
   });
   const [expandedMed, setExpandedMed] = useState(null);
@@ -71,7 +78,7 @@ export default function MedicationsPage() {
       { id: ref.id, ...newMed, familyGroupId: familyGroup.id, logs: [] },
     ]);
     setShowAdd(false);
-    setNewMed({ name: "", dosage: "", frequency: "Daily", times: "08:00", notes: "" });
+    setNewMed({ name: "", dosage: "", frequency: "Daily", times: nowRounded15(), notes: "" });
     toast.success("Medication added!");
   }
 
@@ -130,7 +137,10 @@ export default function MedicationsPage() {
             <p className="text-slate-500 mt-1">Track doses and never miss a medication.</p>
           </div>
           <button
-            onClick={() => setShowAdd(true)}
+            onClick={() => {
+              setNewMed((m) => ({ ...m, times: nowRounded15() }));
+              setShowAdd(true);
+            }}
             className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm shadow-rose-200"
           >
             <Plus className="w-4 h-4" />
@@ -176,19 +186,18 @@ export default function MedicationsPage() {
                   onChange={(e) => setNewMed({ ...newMed, frequency: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-slate-900 bg-white"
                 >
-                  <option>Daily</option>
-                  <option>Twice daily</option>
-                  <option>Weekly</option>
-                  <option>As needed</option>
+                  {FREQUENCY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Time</label>
-                <input
-                  type="time"
+                <TimePicker
                   value={newMed.times}
-                  onChange={(e) => setNewMed({ ...newMed, times: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-slate-900"
+                  onChange={(t) => setNewMed({ ...newMed, times: t })}
                 />
               </div>
               <div className="md:col-span-2">
@@ -260,7 +269,7 @@ export default function MedicationsPage() {
                           <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
                             <span className="flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
-                              {med.frequency} at {med.times}
+                              {frequencyLabel(med.frequency)} at {formatTime12h(med.times)}
                             </span>
                             {streak > 0 && (
                               <span className="text-amber-600 font-medium">

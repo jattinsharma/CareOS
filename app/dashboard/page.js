@@ -21,7 +21,9 @@ import {
   ChevronRight,
   Clock,
   Activity,
+  Check,
 } from "lucide-react";
+import { frequencyLabel, formatTime12h } from "@/lib/medUtils";
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
@@ -108,8 +110,19 @@ export default function Dashboard() {
           <StatCard
             icon={<Pill className="w-5 h-5 text-rose-500" />}
             label="Meds Today"
-            value={todayMeds.length}
-            subtext={todayMeds.length === 0 ? "All caught up" : `${todayMeds.length} pending`}
+            value={medications.length}
+            subtext={
+              todayMeds.length === 0 ? (
+                <span className="inline-flex items-center gap-1 text-emerald-600">
+                  <Check className="w-3.5 h-3.5" />
+                  All caught up
+                </span>
+              ) : (
+                <span className="text-amber-600">
+                  {todayMeds.length} remaining
+                </span>
+              )
+            }
             onClick={() => router.push("/medications")}
             color="rose"
           />
@@ -164,7 +177,7 @@ export default function Dashboard() {
                         <div>
                           <p className="font-semibold text-slate-900">{med.name}</p>
                           <p className="text-sm text-slate-500">
-                            {med.dosage} — {med.frequency} at {med.times}
+                            {med.dosage} — {frequencyLabel(med.frequency)} at {formatTime12h(med.times)}
                           </p>
                         </div>
                       </div>
@@ -219,7 +232,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-3 text-sm text-slate-500 mt-0.5">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5" />
-                            {ev.time || "All day"}
+                            {formatTime12h(ev.time) || "All day"}
                           </span>
                           {ev.location && (
                             <span className="truncate">{ev.location}</span>

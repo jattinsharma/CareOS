@@ -15,6 +15,8 @@ import Navbar from "@/components/Navbar";
 import { CalendarDays, Plus, X, Clock, MapPin, Stethoscope, Pill, Calendar } from "lucide-react";
 import toast from "react-hot-toast";
 import { format, addDays, startOfWeek, isSameMonth, isToday } from "date-fns";
+import TimePicker from "@/components/TimePicker";
+import { formatTime12h } from "@/lib/medUtils";
 
 export default function CalendarPage() {
   const { user } = useAuth();
@@ -155,11 +157,9 @@ export default function CalendarPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Time</label>
-                <input
-                  type="time"
+                <TimePicker
                   value={newEvent.time}
-                  onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-slate-900"
+                  onChange={(t) => setNewEvent({ ...newEvent, time: t })}
                 />
               </div>
               <div className="md:col-span-2">
@@ -225,7 +225,7 @@ export default function CalendarPage() {
                         key={ev.id}
                         className={`text-[10px] px-1.5 py-0.5 rounded-md truncate font-medium border ${typeColors[ev.type] || typeColors.other}`}
                       >
-                        {ev.time ? `${ev.time} ` : ""}
+                        {ev.time ? `${formatTime12h(ev.time)} ` : ""}
                         {ev.title}
                       </div>
                     ))}
@@ -276,7 +276,7 @@ export default function CalendarPage() {
                         <span className="flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" />
                           {format(new Date(ev.date), "MMM d, yyyy")}
-                          {ev.time && ` at ${ev.time}`}
+                          {ev.time && ` at ${formatTime12h(ev.time)}`}
                         </span>
                         {ev.location && (
                           <span className="flex items-center gap-1 truncate">
