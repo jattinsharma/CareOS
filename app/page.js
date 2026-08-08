@@ -19,8 +19,12 @@ import {
   X,
   Star,
   Smartphone,
+  Twitter,
+  Linkedin,
+  Instagram,
 } from "lucide-react";
 import InstallPrompt from "@/components/InstallPrompt";
+import HeroMockup from "@/components/HeroMockup";
 
 /* ---------- Motion presets ---------- */
 const EASE = [0.22, 1, 0.36, 1];
@@ -63,7 +67,7 @@ function CountUp({ target, prefix = "", suffix = "", format = false }) {
   }, [inView, target, format]);
 
   return (
-    <p ref={ref} className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+    <p ref={ref} className="text-3xl font-bold tracking-tight text-rose-600 md:text-4xl">
       {prefix}
       {display}
       {suffix}
@@ -139,6 +143,33 @@ const features = [
   },
 ];
 
+const testimonials = [
+  {
+    quote:
+      "CareOS helped our family keep track of mom's 8 medications. No more missed doses.",
+    name: "Sarah K.",
+    role: "Daughter & Caregiver",
+    initials: "SK",
+    avatarBg: "bg-rose-500",
+  },
+  {
+    quote:
+      "The shared calendar saved us from endless family group chats. Everyone knows what's happening.",
+    name: "Michael R.",
+    role: "Son",
+    initials: "MR",
+    avatarBg: "bg-pink-500",
+  },
+  {
+    quote:
+      "I set up reminders for my dad's appointments and my siblings get them too. It's a lifesaver.",
+    name: "Priya M.",
+    role: "Primary Caregiver",
+    initials: "PM",
+    avatarBg: "bg-orange-500",
+  },
+];
+
 const betaIncluded = [
   "Unlimited family members",
   "Unlimited medications & events",
@@ -181,6 +212,7 @@ const faqs = [
 const footerProduct = [
   { label: "Features", href: "/#features" },
   { label: "Pricing", href: "/#pricing" },
+  { label: "FAQ", href: "/#faq" },
   { label: "Changelog", href: "#" },
 ];
 
@@ -188,6 +220,13 @@ const footerCompany = [
   { label: "About", href: "#" },
   { label: "Contact", href: "#" },
   { label: "Privacy", href: "#" },
+  { label: "Terms", href: "#" },
+];
+
+const socials = [
+  { icon: Twitter, label: "Twitter" },
+  { icon: Linkedin, label: "LinkedIn" },
+  { icon: Instagram, label: "Instagram" },
 ];
 
 export default function LandingPage() {
@@ -233,15 +272,15 @@ export default function LandingPage() {
 
         {/* ---------- Nav ---------- */}
         <header
-          className={`sticky top-0 z-50 border-b border-slate-200/70 transition-all duration-300 ${
+          className={`sticky top-0 z-50 border-b border-slate-100/50 transition-all duration-300 ${
             scrolled
-              ? "bg-white/90 shadow-lg shadow-slate-900/5 backdrop-blur-xl"
+              ? "bg-white/80 shadow-sm shadow-slate-900/5 backdrop-blur-xl"
               : "bg-white/80 backdrop-blur-md"
           }`}
         >
           <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4" aria-label="Main">
             <a href="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500 shadow-sm shadow-rose-200">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 shadow-sm shadow-rose-200">
                 <Heart className="h-5 w-5 text-white" fill="white" />
               </div>
               <span className="text-xl font-bold tracking-tight">CareOS</span>
@@ -273,7 +312,7 @@ export default function LandingPage() {
                 onClick={handleAuth}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-colors hover:bg-rose-600 active:bg-rose-700 disabled:opacity-60"
+                className="rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:from-rose-600 hover:to-pink-600 active:bg-rose-700 disabled:opacity-60"
               >
                 Get Started
               </motion.button>
@@ -331,7 +370,7 @@ export default function LandingPage() {
                     }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-colors hover:bg-rose-600 disabled:opacity-60"
+                    className="w-full rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:from-rose-600 hover:to-pink-600 disabled:opacity-60"
                   >
                     Get Started
                   </motion.button>
@@ -342,83 +381,99 @@ export default function LandingPage() {
         </header>
 
         {/* ---------- Hero ---------- */}
-        <section className="relative overflow-hidden">
-          <div className="pointer-events-none absolute -top-32 right-0 h-96 w-96 rounded-full bg-rose-100/60 blur-3xl" />
-          <div className="pointer-events-none absolute -left-24 top-40 h-80 w-80 rounded-full bg-pink-50 blur-3xl" />
-          <div className="pointer-events-none absolute left-1/4 top-24 h-72 w-72 rounded-full bg-rose-200/30 blur-3xl animate-[blob-drift_9s_ease-in-out_infinite_alternate]" />
-          <div className="pointer-events-none absolute bottom-10 right-1/4 h-80 w-80 rounded-full bg-pink-200/20 blur-3xl animate-[blob-drift_11s_ease-in-out_infinite_alternate]" />
-          <div className="relative mx-auto max-w-6xl px-4 py-20 text-center md:py-28">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.2, ease: EASE }}
-              className="inline-flex items-center gap-2 rounded-full border border-rose-100 bg-rose-50 px-4 py-1.5 text-sm font-medium text-rose-600"
-            >
-              <Star className="h-4 w-4 fill-rose-500 text-rose-500" />
-              Free during beta
-            </motion.div>
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
-              className="mx-auto mt-6 max-w-3xl text-4xl font-bold leading-tight tracking-tight md:text-6xl"
-            >
-              Caring for family,{" "}
-              <span className="text-rose-500">simpler together.</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.5, ease: EASE }}
-              className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-500 md:text-xl"
-            >
-              One shared space for medications, appointments, documents, and
-              reminders — built for families caring for aging parents or managing
-              chronic conditions.
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.6, ease: EASE }}
-              className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
-            >
-              <motion.button
-                type="button"
-                onClick={handleAuth}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                animate={{
-                  boxShadow: [
-                    "0 4px 14px rgba(244, 63, 94, 0.35)",
-                    "0 4px 26px rgba(244, 63, 94, 0.55)",
-                    "0 4px 14px rgba(244, 63, 94, 0.35)",
-                  ],
-                }}
-                transition={{ boxShadow: { duration: 3, repeat: Infinity, ease: "easeInOut" } }}
-                className={ctaBtn}
+        <section className="relative overflow-hidden bg-gradient-to-br from-rose-50 via-white to-orange-50">
+          {/* warm gradient mesh */}
+          <div className="pointer-events-none absolute -left-20 -top-32 h-[28rem] w-[28rem] rounded-full bg-rose-200/20 blur-3xl animate-[blob-drift_15s_ease-in-out_infinite_alternate]" />
+          <div className="pointer-events-none absolute right-0 top-24 h-96 w-96 rounded-full bg-pink-200/20 blur-3xl animate-[blob-drift_18s_ease-in-out_infinite_alternate_reverse]" />
+          <div className="pointer-events-none absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-orange-100/25 blur-3xl animate-[blob-drift_16s_ease-in-out_infinite_alternate]" />
+          <div className="pointer-events-none absolute -bottom-24 right-1/4 h-72 w-72 rounded-full bg-rose-100/20 blur-3xl animate-[blob-drift_14s_ease-in-out_infinite_alternate]" />
+
+          <div className="relative mx-auto max-w-6xl px-4 py-20 md:py-28">
+            <div className="grid items-center gap-14 lg:grid-cols-2">
+              <div className="text-center lg:text-left">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2, ease: EASE }}
+                  className="inline-flex items-center gap-2 rounded-full border border-rose-100 bg-rose-50 px-4 py-1.5 text-sm font-medium text-rose-600"
+                >
+                  <Star className="h-4 w-4 fill-rose-500 text-rose-500" />
+                  Free during beta
+                </motion.div>
+                <motion.h1
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
+                  className="mx-auto mt-6 max-w-3xl text-4xl font-bold leading-tight tracking-tight md:text-6xl lg:mx-0"
+                >
+                  Caring for family,{" "}
+                  <span className="text-rose-500">simpler together.</span>
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 0.5, ease: EASE }}
+                  className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-500 md:text-xl lg:mx-0"
+                >
+                  One shared space for medications, appointments, documents, and
+                  reminders — built for families caring for aging parents or managing
+                  chronic conditions.
+                </motion.p>
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.6, ease: EASE }}
+                  className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start"
+                >
+                  <motion.button
+                    type="button"
+                    onClick={handleAuth}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    animate={{
+                      boxShadow: [
+                        "0 4px 14px rgba(244, 63, 94, 0.35)",
+                        "0 4px 26px rgba(244, 63, 94, 0.55)",
+                        "0 4px 14px rgba(244, 63, 94, 0.35)",
+                      ],
+                    }}
+                    transition={{ boxShadow: { duration: 3, repeat: Infinity, ease: "easeInOut" } }}
+                    className={ctaBtn}
+                  >
+                    Get Started Free
+                    <ArrowRight className="h-4 w-4" />
+                  </motion.button>
+                  <motion.a
+                    href="#how-it-works"
+                    onClick={(e) => scrollToId(e, "how-it-works")}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={outlineBtn}
+                  >
+                    See How It Works
+                  </motion.a>
+                </motion.div>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 0.7, ease: EASE }}
+                  className="mt-6 flex items-center justify-center gap-1.5 text-sm text-slate-500 lg:justify-start"
+                >
+                  <Shield className="h-4 w-4 text-rose-500" />
+                  No credit card required · Setup takes minutes
+                </motion.p>
+              </div>
+
+              {/* floating product mockup — desktop only */}
+              <motion.div
+                initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.8, delay: 0.5, ease: EASE }}
+                className="hidden lg:block"
               >
-                Get Started Free
-                <ArrowRight className="h-4 w-4" />
-              </motion.button>
-              <motion.a
-                href="#how-it-works"
-                onClick={(e) => scrollToId(e, "how-it-works")}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={outlineBtn}
-              >
-                See How It Works
-              </motion.a>
-            </motion.div>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.7, ease: EASE }}
-              className="mt-6 flex items-center justify-center gap-1.5 text-sm text-slate-500"
-            >
-              <Shield className="h-4 w-4 text-rose-500" />
-              No credit card required · Setup takes minutes
-            </motion.p>
+                <HeroMockup />
+              </motion.div>
+            </div>
           </div>
         </section>
 
@@ -428,12 +483,16 @@ export default function LandingPage() {
           initial="hidden"
           whileInView="show"
           viewport={viewportOnce}
-          className="border-y border-slate-200/70 bg-slate-50/50"
+          className="border-y border-rose-100 bg-gradient-to-r from-rose-50 via-white to-rose-50"
         >
           <div className="mx-auto max-w-6xl px-4 py-12">
-            <motion.div variants={stagger(0.1)} className="grid grid-cols-2 gap-8 md:grid-cols-4">
+            <motion.div variants={stagger(0.1)} className="grid grid-cols-2 gap-6 md:grid-cols-4">
               {stats.map((s) => (
-                <motion.div key={s.label} variants={fadeUp} className="text-center">
+                <motion.div
+                  key={s.label}
+                  variants={fadeUp}
+                  className="rounded-2xl border border-slate-100 border-t-4 border-t-rose-500 bg-white p-6 text-center shadow-sm"
+                >
                   <CountUp
                     target={s.target}
                     prefix={s.prefix || ""}
@@ -461,7 +520,7 @@ export default function LandingPage() {
               <p className="text-sm font-semibold uppercase tracking-wider text-rose-500">
                 How it works
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
                 Up and running in minutes
               </h2>
               <p className="mt-4 text-slate-500">
@@ -475,13 +534,13 @@ export default function LandingPage() {
                   <motion.div
                     key={s.title}
                     variants={fadeUp}
-                    className="group relative rounded-3xl border border-slate-200 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:border-rose-200 hover:shadow-lg hover:shadow-rose-100"
+                    className="group relative rounded-2xl border border-slate-100 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-rose-100 hover:shadow-lg hover:shadow-rose-100"
                   >
                     <div className="flex items-center gap-4">
                       <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-50 text-sm font-bold text-rose-500 ring-1 ring-rose-100">
                         {s.step}
                       </span>
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-sm shadow-rose-200 transition-transform duration-300 group-hover:scale-105">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-pink-500 text-white shadow-sm shadow-rose-200 transition-transform duration-300 group-hover:scale-105">
                         <Icon className="h-6 w-6" />
                       </div>
                     </div>
@@ -497,7 +556,7 @@ export default function LandingPage() {
         {/* ---------- Features ---------- */}
         <motion.section
           id="features"
-          className="scroll-mt-16 bg-slate-50 py-20 md:py-28"
+          className="scroll-mt-16 bg-slate-50/50 py-20 md:py-28"
           variants={stagger(0.1)}
           initial="hidden"
           whileInView="show"
@@ -508,7 +567,7 @@ export default function LandingPage() {
               <p className="text-sm font-semibold uppercase tracking-wider text-rose-500">
                 Features
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
                 Everything your family needs, in one place
               </h2>
               <p className="mt-4 text-slate-500">
@@ -523,9 +582,9 @@ export default function LandingPage() {
                   <motion.div
                     key={f.title}
                     variants={fadeUp}
-                    className="group rounded-3xl border border-slate-200 bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-rose-200 hover:shadow-lg hover:shadow-rose-100"
+                    className="group rounded-2xl border border-slate-100 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-rose-100 hover:shadow-lg hover:shadow-rose-100"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 transition-all duration-300 group-hover:scale-105 group-hover:bg-rose-500 group-hover:text-white">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 text-rose-500 transition-transform duration-300 group-hover:scale-105">
                       <Icon className="h-6 w-6" />
                     </div>
                     <h3 className="mt-5 text-lg font-semibold">{f.title}</h3>
@@ -533,6 +592,59 @@ export default function LandingPage() {
                   </motion.div>
                 );
               })}
+            </motion.div>
+          </div>
+        </motion.section>
+
+        {/* ---------- Testimonials ---------- */}
+        <motion.section
+          id="testimonials"
+          className="scroll-mt-16 py-20 md:py-28"
+          variants={stagger(0.1)}
+          initial="hidden"
+          whileInView="show"
+          viewport={viewportOnce}
+        >
+          <div className="mx-auto max-w-6xl px-4">
+            <motion.div variants={fadeUp} className="mx-auto max-w-2xl text-center">
+              <p className="text-sm font-semibold uppercase tracking-wider text-rose-500">
+                Testimonials
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+                Loved by caregivers
+              </h2>
+              <p className="mt-4 text-slate-500">
+                Real families staying in sync — and feeling the relief.
+              </p>
+            </motion.div>
+            <motion.div variants={stagger(0.1)} className="mt-14 grid gap-6 md:grid-cols-3">
+              {testimonials.map((t) => (
+                <motion.div
+                  key={t.name}
+                  variants={fadeUp}
+                  className="flex flex-col rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-rose-100 hover:shadow-lg hover:shadow-rose-100"
+                >
+                  <div className="flex gap-1" aria-label="5 out of 5 stars">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className="h-4 w-4 fill-rose-500 text-rose-500" />
+                    ))}
+                  </div>
+                  <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">
+                    &ldquo;{t.quote}&rdquo;
+                  </p>
+                  <div className="mt-6 flex items-center gap-3">
+                    <div
+                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${t.avatarBg}`}
+                    >
+                      {t.initials}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{t.name}</p>
+                      <p className="text-xs text-slate-500">{t.role}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </motion.div>
           </div>
         </motion.section>
@@ -551,7 +663,7 @@ export default function LandingPage() {
               <p className="text-sm font-semibold uppercase tracking-wider text-rose-500">
                 Pricing
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
                 Simple, honest pricing
               </h2>
               <p className="mt-4 text-slate-500">
@@ -565,7 +677,7 @@ export default function LandingPage() {
               {/* Beta */}
               <motion.div
                 variants={fadeUp}
-                className="flex flex-col rounded-3xl border border-slate-200 bg-white p-8 transition-all duration-300 hover:-translate-y-1 hover:border-rose-200 hover:shadow-lg hover:shadow-rose-100"
+                className="flex flex-col rounded-2xl border border-slate-100 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-rose-100 hover:shadow-lg hover:shadow-rose-100"
               >
                 <h3 className="text-lg font-semibold">Beta</h3>
                 <p className="mt-1 text-sm text-slate-500">
@@ -601,9 +713,9 @@ export default function LandingPage() {
               {/* Pro */}
               <motion.div
                 variants={fadeUp}
-                className="relative flex flex-col rounded-3xl border-2 border-rose-500 bg-white p-8 shadow-lg shadow-rose-100 transition-all duration-300 hover:-translate-y-1"
+                className="relative flex flex-col rounded-2xl border-2 border-rose-500 bg-white p-8 shadow-lg shadow-rose-100 transition-all duration-300 hover:-translate-y-1"
               >
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-rose-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
                   Coming Soon
                 </span>
                 <h3 className="text-lg font-semibold">Pro</h3>
@@ -639,7 +751,7 @@ export default function LandingPage() {
         {/* ---------- FAQ ---------- */}
         <motion.section
           id="faq"
-          className="scroll-mt-16 bg-slate-50 py-20 md:py-28"
+          className="scroll-mt-16 bg-slate-50/50 py-20 md:py-28"
           variants={stagger(0.08)}
           initial="hidden"
           whileInView="show"
@@ -650,7 +762,7 @@ export default function LandingPage() {
               <p className="text-sm font-semibold uppercase tracking-wider text-rose-500">
                 FAQ
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
                 Frequently asked questions
               </h2>
               <p className="mt-4 text-slate-500">
@@ -664,7 +776,7 @@ export default function LandingPage() {
                   <motion.div
                     key={f.q}
                     variants={fadeUp}
-                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white transition-colors duration-300 hover:border-rose-200"
+                    className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-colors duration-300 hover:border-rose-200"
                   >
                     <button
                       type="button"
@@ -718,9 +830,11 @@ export default function LandingPage() {
           viewport={viewportOnce}
         >
           <div className="mx-auto max-w-6xl px-4">
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-rose-500 to-pink-600 px-6 py-16 text-center text-white md:py-20">
-              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-500 to-pink-600 px-6 py-16 text-center text-white md:py-20">
+              {/* floating white orbs */}
+              <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-3xl animate-[blob-drift_15s_ease-in-out_infinite_alternate]" />
+              <div className="pointer-events-none absolute -bottom-28 -left-20 h-96 w-96 rounded-full bg-white/10 blur-3xl animate-[blob-drift_18s_ease-in-out_infinite_alternate_reverse]" />
+              <div className="pointer-events-none absolute bottom-10 right-1/4 h-64 w-64 rounded-full bg-white/10 blur-3xl animate-[blob-drift_16s_ease-in-out_infinite_alternate]" />
               <h2 className="relative text-3xl font-bold tracking-tight md:text-4xl">
                 Start caring, simpler.
               </h2>
@@ -733,10 +847,10 @@ export default function LandingPage() {
                 onClick={handleAuth}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="relative mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 font-semibold text-rose-600 shadow-lg shadow-rose-900/20 transition-all duration-300 hover:bg-rose-50 hover:shadow-xl active:scale-[0.98] disabled:opacity-60"
+                className="relative mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-10 py-4 text-lg font-semibold text-rose-600 shadow-lg shadow-rose-900/20 transition-all duration-300 hover:bg-rose-50 hover:shadow-xl active:scale-[0.98] disabled:opacity-60"
               >
                 Get Started Free
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-5 w-5" />
               </motion.button>
             </div>
           </div>
@@ -744,32 +858,47 @@ export default function LandingPage() {
 
         {/* ---------- Footer ---------- */}
         <motion.footer
-          className="border-t border-slate-200 bg-white"
+          className="bg-slate-900 text-slate-300"
           variants={fadeUp}
           initial="hidden"
           whileInView="show"
           viewport={viewportOnce}
         >
-          <div className="mx-auto max-w-6xl px-4 py-14">
+          <div className="mx-auto max-w-6xl px-4 py-16">
             <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
-              <div className="max-w-sm lg:col-span-2">
+              <div>
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500 shadow-sm shadow-rose-200">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 shadow-sm shadow-rose-900/40">
                     <Heart className="h-5 w-5 text-white" fill="white" />
                   </div>
-                  <span className="text-xl font-bold tracking-tight">CareOS</span>
+                  <span className="text-xl font-bold tracking-tight text-white">CareOS</span>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed text-slate-500">
+                <p className="mt-4 text-sm leading-relaxed text-slate-400">
                   One shared space for the people you care for — medications,
                   appointments, documents, and reminders for the whole family.
                 </p>
-                <p className="mt-4 flex items-center gap-2 text-xs text-slate-500">
-                  <Shield className="h-4 w-4 text-rose-500" />
+                <p className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+                  <Shield className="h-4 w-4 text-rose-400" />
                   Secure by design with Firebase Authentication
                 </p>
+                <div className="mt-6 flex gap-3">
+                  {socials.map((s) => {
+                    const Icon = s.icon;
+                    return (
+                      <a
+                        key={s.label}
+                        href="#"
+                        aria-label={s.label}
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
+                      >
+                        <Icon className="h-4 w-4" />
+                      </a>
+                    );
+                  })}
+                </div>
               </div>
               <div>
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-900">
+                <h4 className="text-sm font-semibold uppercase tracking-wider text-white">
                   Product
                 </h4>
                 <ul className="mt-4 space-y-2.5">
@@ -777,7 +906,7 @@ export default function LandingPage() {
                     <li key={l.label}>
                       <a
                         href={l.href}
-                        className="text-sm text-slate-500 transition-colors hover:text-rose-500"
+                        className="text-sm text-slate-400 transition-colors hover:text-white"
                       >
                         {l.label}
                       </a>
@@ -786,7 +915,7 @@ export default function LandingPage() {
                 </ul>
               </div>
               <div>
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-900">
+                <h4 className="text-sm font-semibold uppercase tracking-wider text-white">
                   Company
                 </h4>
                 <ul className="mt-4 space-y-2.5">
@@ -794,7 +923,7 @@ export default function LandingPage() {
                     <li key={l.label}>
                       <a
                         href={l.href}
-                        className="text-sm text-slate-500 transition-colors hover:text-rose-500"
+                        className="text-sm text-slate-400 transition-colors hover:text-white"
                       >
                         {l.label}
                       </a>
@@ -802,12 +931,40 @@ export default function LandingPage() {
                   ))}
                 </ul>
               </div>
+              <div>
+                <h4 className="text-sm font-semibold uppercase tracking-wider text-white">
+                  Stay updated
+                </h4>
+                <p className="mt-4 text-sm text-slate-400">
+                  Product updates and caregiving tips — straight to your inbox.
+                </p>
+                <form
+                  className="mt-4 flex gap-2"
+                  onSubmit={(e) => e.preventDefault()}
+                >
+                  <label htmlFor="footer-email" className="sr-only">
+                    Email address
+                  </label>
+                  <input
+                    id="footer-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    className="w-full min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:from-rose-600 hover:to-pink-600 active:scale-[0.98]"
+                  >
+                    Subscribe
+                  </button>
+                </form>
+              </div>
             </div>
-            <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-6 sm:flex-row">
-              <p className="text-xs text-slate-500">
+            <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 sm:flex-row">
+              <p className="text-xs text-slate-400">
                 © {new Date().getFullYear()} CareOS. All rights reserved.
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 Made with care for families everywhere.
               </p>
             </div>
