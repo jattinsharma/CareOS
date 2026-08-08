@@ -19,9 +19,6 @@ import {
   X,
   Star,
   Smartphone,
-  Twitter,
-  Linkedin,
-  Instagram,
 } from "lucide-react";
 import InstallPrompt from "@/components/InstallPrompt";
 import CustomCursor from "@/components/CustomCursor";
@@ -187,24 +184,12 @@ const faqs = [
   },
 ];
 
-const footerProduct = [
-  { label: "Features", href: "/#features" },
-  { label: "Pricing", href: "/#pricing" },
-  { label: "FAQ", href: "/#faq" },
-  { label: "Changelog", href: "#" },
-];
-
-const footerCompany = [
-  { label: "About", href: "#" },
-  { label: "Contact", href: "#" },
-  { label: "Privacy", href: "#" },
-  { label: "Terms", href: "#" },
-];
-
-const socials = [
-  { icon: Twitter, label: "Twitter" },
-  { icon: Linkedin, label: "LinkedIn" },
-  { icon: Instagram, label: "Instagram" },
+const footerLinks = [
+  { label: "Features", href: "#features" },
+  { label: "How It Works", href: "#how-it-works" },
+  { label: "Pricing", href: "#pricing" },
+  { label: "FAQ", href: "#faq" },
+  { label: "Sign In", href: "/login" },
 ];
 
 const particles = [
@@ -700,11 +685,8 @@ export default function LandingPage() {
               {/* Pro */}
               <motion.div
                 variants={fadeUp}
-                className="relative flex flex-col rounded-3xl border-2 border-rose-500 bg-white p-8 shadow-sm shadow-rose-200/50 transition-all duration-300 hover:-translate-y-1"
+                className="flex flex-col rounded-3xl border-2 border-rose-500 bg-white p-8 shadow-sm shadow-rose-200/50 transition-all duration-300 hover:-translate-y-1"
               >
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-rose-500 px-3 py-1 text-xs font-bold text-white">
-                  Most Popular
-                </span>
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-900">Pro</h3>
                   <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-rose-500">
@@ -854,48 +836,33 @@ export default function LandingPage() {
           whileInView="show"
           viewport={viewportOnce}
         >
-          <div className="mx-auto max-w-6xl px-4 py-16">
-            <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
-              <div>
+          <div className="mx-auto max-w-6xl px-4 py-14">
+            <div className="flex flex-col items-center justify-between gap-10 md:flex-row">
+              <div className="flex flex-col items-center gap-3 text-center md:items-start md:text-left">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 shadow-sm shadow-rose-900/40">
                     <Heart className="h-5 w-5 text-white" fill="white" />
                   </div>
                   <span className="text-xl font-bold tracking-tight text-white">CareOS</span>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed text-slate-400">
-                  One shared space for the people you care for — medications,
-                  appointments, documents, and reminders for the whole family.
+                <p className="text-sm leading-relaxed text-slate-400">
+                  One shared space for the people you care for.
                 </p>
-                <p className="mt-4 flex items-center gap-2 text-xs text-slate-400">
-                  <Shield className="h-4 w-4 text-rose-400" />
-                  Secure by design with Firebase Authentication
+                <p className="text-xs text-slate-400">
+                  © {new Date().getFullYear()} CareOS. All rights reserved.
                 </p>
-                <div className="mt-6 flex gap-3">
-                  {socials.map((s) => {
-                    const Icon = s.icon;
-                    return (
-                      <a
-                        key={s.label}
-                        href="#"
-                        aria-label={s.label}
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
-                      >
-                        <Icon className="h-4 w-4" />
-                      </a>
-                    );
-                  })}
-                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-white">
-                  Product
-                </h4>
-                <ul className="mt-4 space-y-2.5">
-                  {footerProduct.map((l) => (
+              <nav aria-label="Footer">
+                <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+                  {footerLinks.map((l) => (
                     <li key={l.label}>
                       <a
                         href={l.href}
+                        onClick={
+                          l.href.startsWith("#")
+                            ? (e) => scrollToId(e, l.href.slice(1))
+                            : undefined
+                        }
                         className="text-sm text-slate-400 transition-colors hover:text-white"
                       >
                         {l.label}
@@ -903,60 +870,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-white">
-                  Company
-                </h4>
-                <ul className="mt-4 space-y-2.5">
-                  {footerCompany.map((l) => (
-                    <li key={l.label}>
-                      <a
-                        href={l.href}
-                        className="text-sm text-slate-400 transition-colors hover:text-white"
-                      >
-                        {l.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-white">
-                  Stay updated
-                </h4>
-                <p className="mt-4 text-sm text-slate-400">
-                  Product updates and caregiving tips — straight to your inbox.
-                </p>
-                <form
-                  className="mt-4 flex gap-2"
-                  onSubmit={(e) => e.preventDefault()}
-                >
-                  <label htmlFor="footer-email" className="sr-only">
-                    Email address
-                  </label>
-                  <input
-                    id="footer-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    className="w-full min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/30"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:from-rose-600 hover:to-pink-600 active:scale-[0.98]"
-                  >
-                    Subscribe
-                  </button>
-                </form>
-              </div>
-            </div>
-            <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 sm:flex-row">
-              <p className="text-xs text-slate-400">
-                © {new Date().getFullYear()} CareOS. All rights reserved.
-              </p>
-              <p className="text-xs text-slate-400">
-                Made with care for families everywhere.
-              </p>
+              </nav>
             </div>
           </div>
         </motion.footer>
