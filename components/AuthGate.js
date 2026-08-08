@@ -4,9 +4,12 @@ import { useAuth } from "@/components/AuthProvider";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+// Routes anyone can visit without signing in (public marketing pages).
+const PUBLIC_ROUTES = ["/", "/pricing"];
+
 /**
  * Route guard:
- * - Logged-in users visiting "/" are sent to /dashboard.
+ * - Logged-in users visiting a public route are sent to /dashboard.
  * - Logged-out users visiting any protected page are sent to "/".
  */
 export default function AuthGate({ children }) {
@@ -16,7 +19,7 @@ export default function AuthGate({ children }) {
 
   useEffect(() => {
     if (loading) return;
-    if (pathname === "/") {
+    if (PUBLIC_ROUTES.includes(pathname)) {
       if (user) router.replace("/dashboard");
     } else if (!user) {
       router.replace("/");

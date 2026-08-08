@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -8,112 +8,169 @@ import {
   Heart,
   Pill,
   CalendarDays,
-  Users,
   FolderOpen,
-  Mail,
-  Lock,
-  User,
-  Loader2,
+  Users,
+  Shield,
+  Bell,
   ArrowRight,
-  ShieldCheck,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Menu,
+  X,
+  Star,
+  Smartphone,
 } from "lucide-react";
 import InstallPrompt from "@/components/InstallPrompt";
-
-const features = [
-  {
-    icon: Pill,
-    title: "Medication tracking",
-    desc: "Daily doses, streaks, and shared history",
-    color: "bg-rose-400/20 text-rose-200",
-  },
-  {
-    icon: CalendarDays,
-    title: "Shared calendar",
-    desc: "Appointments & refills for the whole family",
-    color: "bg-blue-400/20 text-blue-200",
-  },
-  {
-    icon: Users,
-    title: "Family groups",
-    desc: "Invite caregivers with a simple code",
-    color: "bg-emerald-400/20 text-emerald-200",
-  },
-  {
-    icon: FolderOpen,
-    title: "Document vault",
-    desc: "Insurance cards & records, always handy",
-    color: "bg-violet-400/20 text-violet-200",
-  },
-];
 
 function friendlyAuthError(err) {
   const code = err?.code || "";
   const map = {
-    "auth/invalid-email": "Please enter a valid email address.",
-    "auth/user-disabled": "This account has been disabled.",
-    "auth/user-not-found": "No account found with this email.",
-    "auth/wrong-password": "Incorrect password. Please try again.",
-    "auth/invalid-credential": "Incorrect email or password.",
-    "auth/email-already-in-use": "An account with this email already exists. Try signing in.",
-    "auth/weak-password": "Password should be at least 6 characters.",
-    "auth/too-many-requests": "Too many attempts. Please wait a moment and try again.",
     "auth/popup-closed-by-user": "Sign-in was cancelled.",
     "auth/unauthorized-domain":
       "This domain isn't authorized for sign-in yet. Add it in Firebase Console → Authentication → Settings → Authorized domains.",
     "auth/operation-not-allowed":
       "This sign-in method isn't enabled. Enable it in Firebase Console → Authentication → Sign-in method.",
+    "auth/too-many-requests": "Too many attempts. Please wait a moment and try again.",
+    "auth/network-request-failed": "Network error. Check your connection and try again.",
   };
   return map[code] || err?.message || "Something went wrong. Please try again.";
 }
 
+const navLinks = [
+  { href: "#features", label: "Features" },
+  { href: "#how-it-works", label: "How It Works" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#faq", label: "FAQ" },
+];
+
+const stats = [
+  { value: "53M", label: "Family caregivers in the U.S." },
+  { value: "$7,000", label: "Avg. annual out-of-pocket cost" },
+  { value: "3x", label: "Medication miss rate" },
+  { value: "100%", label: "Free during beta" },
+];
+
+const steps = [
+  {
+    step: "1",
+    icon: Users,
+    title: "Create Family Group",
+    desc: "Start a shared care group and invite siblings, partners, or in-home caregivers with a simple code — everyone joins instantly.",
+  },
+  {
+    step: "2",
+    icon: Pill,
+    title: "Add Medications & Events",
+    desc: "Log daily medications, appointments, and refills into one shared space that the whole family can see at a glance.",
+  },
+  {
+    step: "3",
+    icon: Bell,
+    title: "Get Reminded, Stay in Sync",
+    desc: "Smart reminders and shared updates keep every caregiver on the same page — so nothing slips through the cracks.",
+  },
+];
+
+const features = [
+  {
+    icon: Pill,
+    title: "Medication Tracking",
+    desc: "Track doses, streaks, and shared medication history so everyone knows what's been taken.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Shared Calendar",
+    desc: "Appointments, refills, and events visible to the whole family — no more group-chat scheduling.",
+  },
+  {
+    icon: FolderOpen,
+    title: "Document Vault",
+    desc: "Insurance cards, medical records, and important papers — organized and always handy.",
+  },
+  {
+    icon: Bell,
+    title: "Smart Reminders",
+    desc: "Gentle reminders for medications and events, delivered right when your family needs them.",
+  },
+  {
+    icon: Users,
+    title: "Multi-Caregiver Teams",
+    desc: "Siblings, partners, and professional caregivers can all join the same care group.",
+  },
+  {
+    icon: Smartphone,
+    title: "Install as App",
+    desc: "Add CareOS to any home screen for quick, offline-ready access — just like a native app.",
+  },
+];
+
+const betaIncluded = [
+  "Unlimited family members",
+  "Unlimited medications & events",
+  "Shared calendar & reminders",
+  "SMS reminders included",
+  "Lifetime access for beta users",
+];
+
+const proIncluded = [
+  "Everything in Beta",
+  "Advanced reports & insights",
+  "Priority support",
+  "Data export",
+  "Full activity logs",
+];
+
+const faqs = [
+  {
+    q: "Is CareOS really free?",
+    a: "Yes. CareOS is free for everyone during the beta, and beta users keep free access for life — no credit card required.",
+  },
+  {
+    q: "Does my elderly parent need a smartphone?",
+    a: "No. Caregivers can manage everything from their own phones. Family members who don't use apps simply receive reminders — no smartphone needed on their end.",
+  },
+  {
+    q: "Can multiple family members use it at the same time?",
+    a: "Absolutely. Create a family group and invite unlimited members — siblings, partners, and in-home caregivers can all view medications, calendar events, and documents together.",
+  },
+  {
+    q: "Is our family's health data secure?",
+    a: "Yes. CareOS uses Firebase Authentication and strict, per-family security rules. Your data stays private to your family group — only the people you invite can see it.",
+  },
+  {
+    q: "What happens if someone misses a medication?",
+    a: "Reminders go out to the whole care team, and missed doses are clearly logged so any caregiver can follow up. Nothing slips by silently.",
+  },
+];
+
+const footerProduct = [
+  { label: "Features", href: "/#features" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "Changelog", href: "#" },
+];
+
+const footerCompany = [
+  { label: "About", href: "#" },
+  { label: "Contact", href: "#" },
+  { label: "Privacy", href: "#" },
+];
+
 export default function LandingPage() {
-  const { loginWithGoogle, loginWithEmail, signupWithEmail } = useAuth();
+  const { user, loading, loginWithGoogle } = useAuth();
   const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState(null);
+  const [authing, setAuthing] = useState(false);
 
-  const [mode, setMode] = useState("signin"); // "signin" | "signup"
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  // Logged-in users go straight to the app.
+  useEffect(() => {
+    if (!loading && user) router.replace("/dashboard");
+  }, [loading, user, router]);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (submitting) return;
-
-    if (!email.trim() || !password) {
-      toast.error("Please fill in your email and password.");
-      return;
-    }
-    if (mode === "signup" && !name.trim()) {
-      toast.error("Please enter your name.");
-      return;
-    }
-    if (password.length < 6) {
-      toast.error("Password should be at least 6 characters.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      if (mode === "signin") {
-        await loginWithEmail(email.trim(), password);
-        toast.success("Welcome back!");
-      } else {
-        await signupWithEmail(email.trim(), password, name.trim());
-        toast.success("Account created — welcome to CareOS!");
-      }
-      router.push("/dashboard");
-    } catch (err) {
-      toast.error(friendlyAuthError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleGoogle() {
-    if (googleLoading) return;
-    setGoogleLoading(true);
+  async function handleAuth() {
+    if (authing) return;
+    setAuthing(true);
     try {
       await loginWithGoogle();
       toast.success("Signed in with Google!");
@@ -121,221 +178,469 @@ export default function LandingPage() {
     } catch (err) {
       toast.error(friendlyAuthError(err));
     } finally {
-      setGoogleLoading(false);
+      setAuthing(false);
     }
   }
 
-  const inputClass =
-    "w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent focus:bg-white text-slate-900 placeholder:text-slate-400 transition-all";
+  function scrollToId(e, id) {
+    e.preventDefault();
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    setMobileOpen(false);
+  }
+
+  const ctaBtn =
+    "inline-flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-6 py-3 font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:bg-rose-600 hover:shadow-md hover:shadow-rose-200 active:scale-[0.98] active:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed";
+
+  const outlineBtn =
+    "inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-700 transition-all hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98]";
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-white text-slate-900">
       <InstallPrompt />
 
-      {/* ---------- Brand panel ---------- */}
-      <div className="relative lg:w-[46%] bg-gradient-to-br from-rose-500 via-rose-600 to-pink-700 text-white overflow-hidden flex flex-col justify-between p-8 lg:p-14">
-        {/* Decorative blobs */}
-        <div className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-20 w-96 h-96 rounded-full bg-pink-300/20 blur-3xl" />
+      {/* ---------- Nav ---------- */}
+      <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
+        <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4" aria-label="Main">
+          <a href="/" className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500 shadow-sm shadow-rose-200">
+              <Heart className="h-5 w-5 text-white" fill="white" />
+            </div>
+            <span className="text-xl font-bold tracking-tight">CareOS</span>
+          </a>
 
-        {/* Logo */}
-        <div className="relative flex items-center gap-3">
-          <div className="w-11 h-11 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center shadow-lg shadow-rose-900/20">
-            <Heart className="w-6 h-6 text-white" fill="white" />
+          <div className="hidden items-center gap-7 md:flex">
+            {navLinks.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={(e) => scrollToId(e, l.href.slice(1))}
+                className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+              >
+                {l.label}
+              </a>
+            ))}
           </div>
-          <span className="font-bold text-2xl tracking-tight">CareOS</span>
-        </div>
 
-        {/* Headline + features (desktop) */}
-        <div className="relative my-10 lg:my-0">
-          <h1 className="text-4xl lg:text-5xl font-bold leading-tight tracking-tight">
-            Caring for family,
-            <br />
-            <span className="text-rose-100">simpler together.</span>
+          <div className="hidden items-center gap-3 md:flex">
+            <button
+              type="button"
+              onClick={handleAuth}
+              disabled={authing}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={handleAuth}
+              disabled={authing}
+              className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-colors hover:bg-rose-600 active:bg-rose-700 disabled:opacity-60"
+            >
+              Get Started
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+            className="rounded-lg p-2 text-slate-700 transition-colors hover:bg-slate-100 md:hidden"
+          >
+            {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </nav>
+
+        {mobileOpen && (
+          <div className="border-t border-slate-200 bg-white px-4 py-4 md:hidden">
+            <div className="flex flex-col gap-1">
+              {navLinks.map((l) => (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={(e) => scrollToId(e, l.href.slice(1))}
+                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  {l.label}
+                </a>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  handleAuth();
+                }}
+                disabled={authing}
+                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  handleAuth();
+                }}
+                disabled={authing}
+                className="w-full rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-colors hover:bg-rose-600 disabled:opacity-60"
+              >
+                Get Started
+              </button>
+            </div>
+          </div>
+        )}
+      </header>
+
+      {/* ---------- Hero ---------- */}
+      <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute -top-32 right-0 h-96 w-96 rounded-full bg-rose-100/60 blur-3xl" />
+        <div className="pointer-events-none absolute -left-24 top-40 h-80 w-80 rounded-full bg-pink-50 blur-3xl" />
+        <div className="relative mx-auto max-w-6xl px-4 py-20 text-center md:py-28">
+          <div className="inline-flex items-center gap-2 rounded-full border border-rose-100 bg-rose-50 px-4 py-1.5 text-sm font-medium text-rose-600">
+            <Star className="h-4 w-4 fill-rose-500 text-rose-500" />
+            Free during beta
+          </div>
+          <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-bold leading-tight tracking-tight md:text-6xl">
+            Caring for family,{" "}
+            <span className="text-rose-500">simpler together.</span>
           </h1>
-          <p className="mt-4 text-rose-100/90 max-w-md leading-relaxed">
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-500 md:text-xl">
             One shared space for medications, appointments, documents, and
-            communication — built for families caring for aging parents or
-            managing chronic conditions.
+            reminders — built for families caring for aging parents or managing
+            chronic conditions.
           </p>
+          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <button type="button" onClick={handleAuth} disabled={authing} className={ctaBtn}>
+              Get Started Free
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <a href="#how-it-works" onClick={(e) => scrollToId(e, "how-it-works")} className={outlineBtn}>
+              See How It Works
+            </a>
+          </div>
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-sm text-slate-500">
+            <Shield className="h-4 w-4 text-rose-500" />
+            No credit card required · Setup takes minutes
+          </p>
+        </div>
+      </section>
 
-          <div className="hidden lg:grid grid-cols-2 gap-4 mt-10">
+      {/* ---------- Stats bar ---------- */}
+      <section className="border-y border-slate-200/70 bg-slate-50/50">
+        <div className="mx-auto max-w-6xl px-4 py-12">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+            {stats.map((s) => (
+              <div key={s.label} className="text-center">
+                <p className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+                  {s.value}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- How It Works ---------- */}
+      <section id="how-it-works" className="scroll-mt-16 py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-rose-500">
+              How it works
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              Up and running in minutes
+            </h2>
+            <p className="mt-4 text-slate-500">
+              Three simple steps bring your whole care team onto the same page.
+            </p>
+          </div>
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {steps.map((s) => {
+              const Icon = s.icon;
+              return (
+                <div
+                  key={s.title}
+                  className="group relative rounded-3xl border border-slate-200 bg-white p-8 transition-all hover:-translate-y-1 hover:border-rose-200 hover:shadow-lg hover:shadow-rose-100"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-50 text-sm font-bold text-rose-500 ring-1 ring-rose-100">
+                      {s.step}
+                    </span>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-sm shadow-rose-200 transition-transform group-hover:scale-105">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                  </div>
+                  <h3 className="mt-6 text-lg font-semibold">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-500">{s.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- Features ---------- */}
+      <section id="features" className="scroll-mt-16 bg-slate-50 py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-rose-500">
+              Features
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              Everything your family needs, in one place
+            </h2>
+            <p className="mt-4 text-slate-500">
+              Powerful tools designed around real caregiving — simple enough for
+              everyone.
+            </p>
+          </div>
+          <div className="mt-14 grid gap-6 md:grid-cols-2">
             {features.map((f) => {
               const Icon = f.icon;
               return (
-                <div key={f.title} className="flex items-start gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${f.color}`}
-                  >
-                    <Icon className="w-5 h-5" />
+                <div
+                  key={f.title}
+                  className="group rounded-3xl border border-slate-200 bg-white p-7 transition-all hover:-translate-y-1 hover:border-rose-200 hover:shadow-lg hover:shadow-rose-100"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 transition-colors group-hover:bg-rose-500 group-hover:text-white">
+                    <Icon className="h-6 w-6" />
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm">{f.title}</p>
-                    <p className="text-xs text-rose-100/80 mt-0.5">{f.desc}</p>
+                  <h3 className="mt-5 text-lg font-semibold">{f.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-500">{f.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- Pricing ---------- */}
+      <section id="pricing" className="scroll-mt-16 py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-rose-500">
+              Pricing
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              Simple, honest pricing
+            </h2>
+            <p className="mt-4 text-slate-500">
+              Start free today. Upgrade only when your family wants more.
+            </p>
+          </div>
+          <div className="mx-auto mt-14 grid max-w-4xl gap-6 md:grid-cols-2">
+            {/* Beta */}
+            <div className="flex flex-col rounded-3xl border border-slate-200 bg-white p-8 transition-all hover:border-rose-200 hover:shadow-lg hover:shadow-rose-100">
+              <h3 className="text-lg font-semibold">Beta</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Everything you need while we&apos;re in beta — free forever for beta
+                users.
+              </p>
+              <div className="mt-6 flex items-baseline gap-2">
+                <span className="text-4xl font-bold tracking-tight">$0</span>
+                <span className="text-sm text-slate-500">free forever</span>
+              </div>
+              <ul className="mt-8 flex-1 space-y-3">
+                {betaIncluded.map((item) => (
+                  <li key={item} className="flex items-start gap-3 text-sm">
+                    <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-500">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                    <span className="text-slate-700">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" onClick={handleAuth} disabled={authing} className={ctaBtn + " mt-8 w-full"}>
+                Get Started
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Pro */}
+            <div className="relative flex flex-col rounded-3xl border-2 border-rose-500 bg-white p-8 shadow-lg shadow-rose-100">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-rose-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                Coming Soon
+              </span>
+              <h3 className="text-lg font-semibold">Pro</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                For families that want deeper insights and priority help.
+              </p>
+              <div className="mt-6 flex items-baseline gap-2">
+                <span className="text-4xl font-bold tracking-tight">$9</span>
+                <span className="text-sm text-slate-500">per month</span>
+              </div>
+              <ul className="mt-8 flex-1 space-y-3">
+                {proIncluded.map((item) => (
+                  <li key={item} className="flex items-start gap-3 text-sm">
+                    <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-500">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                    <span className="text-slate-700">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                disabled
+                className="mt-8 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-3 font-semibold text-slate-400"
+              >
+                Coming Soon
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- FAQ ---------- */}
+      <section id="faq" className="scroll-mt-16 bg-slate-50 py-20 md:py-28">
+        <div className="mx-auto max-w-3xl px-4">
+          <div className="text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-rose-500">
+              FAQ
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+              Frequently asked questions
+            </h2>
+            <p className="mt-4 text-slate-500">
+              Everything you need to know about caring with CareOS.
+            </p>
+          </div>
+          <div className="mt-12 space-y-3">
+            {faqs.map((f, i) => {
+              const open = openFaq === i;
+              return (
+                <div
+                  key={f.q}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white transition-colors hover:border-rose-200"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaq(open ? null : i)}
+                    aria-expanded={open}
+                    aria-controls={`faq-panel-${i}`}
+                    className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+                  >
+                    <span className="font-semibold text-slate-900">{f.q}</span>
+                    {open ? (
+                      <ChevronUp className="h-5 w-5 flex-shrink-0 text-rose-500" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 flex-shrink-0 text-slate-400" />
+                    )}
+                  </button>
+                  <div
+                    id={`faq-panel-${i}`}
+                    className={`grid transition-all duration-300 ease-in-out ${
+                      open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                    }`}
+                    aria-hidden={!open}
+                  >
+                    <div className="overflow-hidden">
+                      <p className="px-6 pb-5 text-sm leading-relaxed text-slate-500">
+                        {f.a}
+                      </p>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
+      </section>
 
-        {/* Trust note */}
-        <div className="relative flex items-center gap-2 text-xs text-rose-100/80">
-          <ShieldCheck className="w-4 h-4" />
-          Your family&apos;s health data is protected with Firebase Authentication
-          and secure access rules.
-        </div>
-      </div>
-
-      {/* ---------- Auth card ---------- */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-slate-50">
-        <div className="w-full max-w-md">
-          {/* Logo (mobile) */}
-          <div className="lg:hidden flex items-center gap-2.5 justify-center mb-8">
-            <div className="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center shadow-sm shadow-rose-200">
-              <Heart className="w-5 h-5 text-white" fill="white" />
-            </div>
-            <span className="font-bold text-2xl text-slate-900 tracking-tight">CareOS</span>
-          </div>
-
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm shadow-slate-200/60 p-8">
-            <h2 className="text-2xl font-bold text-slate-900">
-              {mode === "signin" ? "Welcome back" : "Create your account"}
+      {/* ---------- Final CTA ---------- */}
+      <section className="py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-rose-500 to-pink-600 px-6 py-16 text-center text-white md:py-20">
+            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <h2 className="relative text-3xl font-bold tracking-tight md:text-4xl">
+              Start caring, simpler.
             </h2>
-            <p className="text-slate-500 mt-1 text-sm">
-              {mode === "signin"
-                ? "Sign in to your family care space."
-                : "Join CareOS and start coordinating care."}
+            <p className="relative mx-auto mt-4 max-w-xl text-rose-50/90">
+              Join your family&apos;s care team today — free during beta, no
+              credit card required.
             </p>
-
-            {/* Mode tabs */}
-            <div className="grid grid-cols-2 gap-1 bg-slate-100 rounded-xl p-1 mt-6">
-              {[
-                { key: "signin", label: "Sign in" },
-                { key: "signup", label: "Create account" },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setMode(tab.key)}
-                  className={`py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                    mode === tab.key
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              {mode === "signup" && (
-                <div className="relative">
-                  <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Your name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
-                    className={inputClass}
-                  />
-                </div>
-              )}
-
-              <div className="relative">
-                <Mail className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  placeholder="Email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  required
-                  className={inputClass}
-                />
-              </div>
-
-              <div className="relative">
-                <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                  required
-                  className={inputClass}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-colors shadow-sm shadow-rose-200"
-              >
-                {submitting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    {mode === "signin" ? "Sign in" : "Create account"}
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="px-3 bg-white text-slate-400 font-medium">
-                  or continue with
-                </span>
-              </div>
-            </div>
-
-            {/* Google */}
             <button
-              onClick={handleGoogle}
-              disabled={googleLoading}
-              className="w-full flex items-center justify-center gap-3 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 active:bg-slate-100 disabled:opacity-60 disabled:cursor-not-allowed py-3 rounded-xl font-semibold text-slate-700 transition-all"
+              type="button"
+              onClick={handleAuth}
+              disabled={authing}
+              className="relative mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 font-semibold text-rose-600 shadow-lg shadow-rose-900/20 transition-all hover:bg-rose-50 hover:shadow-xl active:scale-[0.98] disabled:opacity-60"
             >
-              {googleLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
-              ) : (
-                <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-              )}
-              Continue with Google
+              Get Started Free
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
-
-          <p className="text-center text-xs text-slate-400 mt-6">
-            Protected by Firebase Authentication · Email &amp; Google sign-in
-          </p>
         </div>
-      </div>
+      </section>
+
+      {/* ---------- Footer ---------- */}
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-14">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+            <div className="max-w-sm lg:col-span-2">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500 shadow-sm shadow-rose-200">
+                  <Heart className="h-5 w-5 text-white" fill="white" />
+                </div>
+                <span className="text-xl font-bold tracking-tight">CareOS</span>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-slate-500">
+                One shared space for the people you care for — medications,
+                appointments, documents, and reminders for the whole family.
+              </p>
+              <p className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                <Shield className="h-4 w-4 text-rose-500" />
+                Secure by design with Firebase Authentication
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-900">
+                Product
+              </h4>
+              <ul className="mt-4 space-y-2.5">
+                {footerProduct.map((l) => (
+                  <li key={l.label}>
+                    <a
+                      href={l.href}
+                      className="text-sm text-slate-500 transition-colors hover:text-rose-500"
+                    >
+                      {l.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-900">
+                Company
+              </h4>
+              <ul className="mt-4 space-y-2.5">
+                {footerCompany.map((l) => (
+                  <li key={l.label}>
+                    <a
+                      href={l.href}
+                      className="text-sm text-slate-500 transition-colors hover:text-rose-500"
+                    >
+                      {l.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-6 sm:flex-row">
+            <p className="text-xs text-slate-500">
+              © {new Date().getFullYear()} CareOS. All rights reserved.
+            </p>
+            <p className="text-xs text-slate-500">
+              Made with care for families everywhere.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
