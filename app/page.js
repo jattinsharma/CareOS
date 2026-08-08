@@ -47,19 +47,21 @@ const viewportOnce = { once: true, margin: "-100px" };
 /* ---------- Animated counter ---------- */
 function CountUp({ target, prefix = "", suffix = "", format = false }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-100px" });
+  const inView = useInView(ref, { once: true, amount: 0.5 });
   const [display, setDisplay] = useState("0");
 
   useEffect(() => {
     if (!inView) return undefined;
+
+    const fmt = (n) => (format ? n.toLocaleString("en-US") : String(n));
+
     const controls = animate(0, target, {
       duration: 1.5,
       ease: "easeOut",
-      onUpdate: (v) => {
-        const rounded = Math.round(v);
-        setDisplay(format ? rounded.toLocaleString("en-US") : String(rounded));
-      },
+      onUpdate: (v) => setDisplay(fmt(Math.round(v))),
+      onComplete: () => setDisplay(fmt(target)),
     });
+
     return () => controls.stop();
   }, [inView, target, format]);
 
