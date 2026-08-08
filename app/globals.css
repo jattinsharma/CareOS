@@ -37,6 +37,61 @@ body {
   }
 }
 
+/* Animated aurora mesh for the hero */
+@keyframes aurora-1 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(60px, -40px, 0) scale(1.15);
+  }
+  66% {
+    transform: translate3d(-40px, 32px, 0) scale(0.95);
+  }
+}
+
+@keyframes aurora-2 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  40% {
+    transform: translate3d(-52px, 36px, 0) scale(0.92);
+  }
+  75% {
+    transform: translate3d(44px, -28px, 0) scale(1.18);
+  }
+}
+
+@keyframes aurora-3 {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(36px, 44px, 0) scale(1.1);
+  }
+}
+
+/* Drifting decorative particles for the final CTA */
+@keyframes float-particle {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate3d(0, -28px, 0);
+    opacity: 0.9;
+  }
+}
+
+::selection {
+  background-color: #fecdd3; /* rose-200 */
+  color: #881337; /* rose-900 */
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
