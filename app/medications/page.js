@@ -14,7 +14,7 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
-import { Pill, Plus, Check, Clock, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Pill, Plus, Check, Clock, X, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   formatTime12h,
@@ -37,6 +37,7 @@ export default function MedicationsPage() {
     notes: "",
   });
   const [expandedMed, setExpandedMed] = useState(null);
+  const [editingMed, setEditingMed] = useState(null); // med id being edited, null = add mode
 
   useEffect(() => {
     if (!user) return;
@@ -61,25 +62,69 @@ export default function MedicationsPage() {
     setMedications(medSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
   }
 
-  async function addMedication() {
+  async function handleSubmit() {
     if (!newMed.name.trim() || !newMed.dosage.trim()) {
       toast.error("Please fill in medication name and dosage");
       return;
     }
-    const ref = await addDoc(collection(db, "medications"), {
-      ...newMed,
-      familyGroupId: familyGroup.id,
-      createdBy: user.uid,
-      createdAt: new Date().toISOString(),
-      logs: [],
-    });
-    setMedications([
-      ...medications,
-      { id: ref.id, ...newMed, familyGroupId: familyGroup.id, logs: [] },
-    ]);
+    if (editingMed) {
+      const target = medications.find((m) => m.id === editingMed);
+      if (!target) {
+        toast.error("Medication not found");
+        return;
+      }
+      const medRef = doc(db, "medications", editingMed);
+      await updateDoc(medRef, {
+        ...newMed,
+        // The rules validate the full resulting document on update and require
+        // identity fields + logs to match the existing doc — carry them over.
+        familyGroupId: target.familyGroupId,
+        createdBy: target.createdBy,
+        createdAt: target.createdAt,
+        logs: target.logs || [],
+      });
+      setMedications((meds) =>
+        meds.map((m) => (m.id === editingMed ? { ...m, ...newMed } : m))
+      );
+      toast.success("Medication updated");
+    } else {
+      const ref = await addDoc(collection(db, "medications"), {
+        ...newMed,
+        familyGroupId: familyGroup.id,
+        createdBy: user.uid,
+        createdAt: new Date().toISOString(),
+        logs: [],
+      });
+      setMedications([
+        ...medications,
+        { id: ref.id, ...newMed, familyGroupId: familyGroup.id, logs: [] },
+      ]);
+      toast.success("Medication added!");
+    }
     setShowAdd(false);
+    resetForm();
+  }
+
+  function resetForm() {
+    setEditingMed(null);
     setNewMed({ name: "", dosage: "", frequency: "Daily", times: nowRounded15(), notes: "" });
-    toast.success("Medication added!");
+  }
+
+  function openEdit(med) {
+    setNewMed({
+      name: med.name || "",
+      dosage: med.dosage || "",
+      frequency: med.frequency || "Daily",
+      times: med.times || nowRounded15(),
+      notes: med.notes || "",
+    });
+    setEditingMed(med.id);
+    setShowAdd(true);
+    // The form renders above the list — bring it into view when editing a
+    // card further down the page.
+    setTimeout(() => {
+      document.getElementById("med-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   }
 
   async function markTaken(medId) {
@@ -138,7 +183,7 @@ export default function MedicationsPage() {
           </div>
           <button
             onClick={() => {
-              setNewMed((m) => ({ ...m, times: nowRounded15() }));
+              resetForm();
               setShowAdd(true);
             }}
             className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm shadow-rose-200"
@@ -150,11 +195,16 @@ export default function MedicationsPage() {
 
         {/* Add Form */}
         {showAdd && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
+          <div id="med-form" className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-slate-900">Add Medication</h2>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {editingMed ? "Edit Medication" : "Add Medication"}
+              </h2>
               <button
-                onClick={() => setShowAdd(false)}
+                onClick={() => {
+                  setShowAdd(false);
+                  resetForm();
+                }}
                 className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-slate-400" />
@@ -211,10 +261,10 @@ export default function MedicationsPage() {
               </div>
             </div>
             <button
-              onClick={addMedication}
+              onClick={handleSubmit}
               className="mt-5 w-full bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white py-3 rounded-xl font-semibold transition-colors"
             >
-              Save Medication
+              {editingMed ? "Update Medication" : "Save Medication"}
             </button>
           </div>
         )}
@@ -289,6 +339,14 @@ export default function MedicationsPage() {
                             Take
                           </button>
                         )}
+                        <button
+                          onClick={() => openEdit(med)}
+                          aria-label="Edit medication"
+                          title="Edit"
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                          <Pencil className="w-4 h-4 text-slate-400" />
+                        </button>
                         <button
                           onClick={() => setExpandedMed(isExpanded ? null : med.id)}
                           className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
