@@ -2,6 +2,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import AuthGate from "@/components/AuthGate";
+import PWAUpdater from "@/components/PWAUpdater";
 import { Toaster } from "react-hot-toast";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -20,16 +21,6 @@ export const metadata = {
 export const viewport = {
   themeColor: "#f43f5e",
 };
-
-const serviceWorkerScript = `
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("/sw.js").catch(function (err) {
-        console.error("Service worker registration failed:", err);
-      });
-    });
-  }
-`;
 
 export default function RootLayout({ children }) {
   return (
@@ -53,7 +44,7 @@ export default function RootLayout({ children }) {
             }}
           />
         </AuthProvider>
-        <script dangerouslySetInnerHTML={{ __html: serviceWorkerScript }} />
+        <PWAUpdater />
       </body>
     </html>
   );
