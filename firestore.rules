@@ -15,7 +15,7 @@ service cloud.firestore {
     // medications/{medId}
     //   name:           string (1-100, required)
     //   dosage:         string (1-50, required)
-    //   frequency:      string in ['Daily','Twice daily','Weekly','As needed']
+    //   frequency:      string in ['Daily','Twice daily','every-2-days','every-3-days','Weekly','As needed']
     //   times:          string (HH:MM, 1-10)
     //   notes:          string (optional, <= 500)
     //   familyGroupId:  string (required, IMMUTABLE)
@@ -33,6 +33,8 @@ service cloud.firestore {
     //   familyGroupId:  string (required, IMMUTABLE)
     //   createdBy:      string (uid, required, IMMUTABLE)
     //   createdAt:      string (ISO-8601, required, IMMUTABLE)
+    //   status:         string in ['scheduled','attended','missed'] (optional)
+    //   attendedAt:     string (ISO-8601, optional)
     //
     // documents/{docId}
     //   name:           string (1-255, required)
@@ -146,7 +148,7 @@ service cloud.firestore {
                                'familyGroupId', 'createdBy', 'createdAt', 'logs'])
         && isString(d.name, 1, 100)
         && isString(d.dosage, 1, 50)
-        && d.frequency in ['Daily', 'Twice daily', 'Weekly', 'As needed']
+        && d.frequency in ['Daily', 'Twice daily', 'every-2-days', 'every-3-days', 'Weekly', 'As needed']
         && isString(d.times, 1, 10)
         && (!('notes' in d) || isString(d.notes, 0, 500))
         && d.familyGroupId is string && d.familyGroupId.size() >= 1
@@ -161,7 +163,7 @@ service cloud.firestore {
                                'familyGroupId', 'createdBy', 'createdAt', 'logs'])
         && isString(d.name, 1, 100)
         && isString(d.dosage, 1, 50)
-        && d.frequency in ['Daily', 'Twice daily', 'Weekly', 'As needed']
+        && d.frequency in ['Daily', 'Twice daily', 'every-2-days', 'every-3-days', 'Weekly', 'As needed']
         && isString(d.times, 1, 10)
         && (!('notes' in d) || isString(d.notes, 0, 500))
         && d.familyGroupId == resource.data.familyGroupId
@@ -198,10 +200,32 @@ service cloud.firestore {
         && isValidDateString(d.createdAt);
     }
 
+    // Event status updates (e.g. marking an event as attended) may only touch
+    // the status/attendedAt fields; identity fields are immutable.
+    function isValidEventUpdate() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['title', 'date', 'time', 'location', 'type',
+                               'familyGroupId', 'createdBy', 'createdAt',
+                               'status', 'attendedAt'])
+        && isString(d.title, 1, 150)
+        && isValidDayString(d.date)
+        && (!('time' in d) || isString(d.time, 0, 10))
+        && (!('location' in d) || isString(d.location, 0, 200))
+        && d.type in ['appointment', 'medication', 'other']
+        && d.familyGroupId == resource.data.familyGroupId
+        && d.createdBy == resource.data.createdBy
+        && d.createdAt == resource.data.createdAt
+        && (!('status' in d) || d.status in ['scheduled', 'attended', 'missed'])
+        && (!('attendedAt' in d) || isValidDateString(d.attendedAt));
+    }
+
     match /events/{eventId} {
       allow read: if isMember(resource.data.familyGroupId);
       allow create: if isAuthenticated() && isMember(request.resource.data.familyGroupId)
         && isValidEventCreate();
+      // Any family member can mark an event attended or update its status.
+      allow update: if isAuthenticated() && isMember(resource.data.familyGroupId)
+        && isValidEventUpdate();
       // Only the person who created the event can delete it.
       allow delete: if isAuthenticated()
         && resource.data.createdBy == request.auth.uid

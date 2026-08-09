@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/components/AuthProvider";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import {
@@ -22,8 +22,11 @@ import {
   Clock,
   Activity,
   Check,
+  Bell,
 } from "lucide-react";
 import { frequencyLabel, formatTime12h } from "@/lib/medUtils";
+import { getEventStatus, isPastEvent, toDateKey } from "@/lib/eventUtils";
+import toast from "react-hot-toast";
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
@@ -32,11 +35,96 @@ export default function Dashboard() {
   const [medications, setMedications] = useState([]);
   const [events, setEvents] = useState([]);
   const [todayMeds, setTodayMeds] = useState([]);
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifDenied, setNotifDenied] = useState(false);
+  const [notifReady, setNotifReady] = useState(false);
+  const medsRef = useRef(medications);
+  const lastNotifiedRef = useRef({});
 
   useEffect(() => {
     if (!user) return;
     fetchData();
   }, [user]);
+
+  // Keep a ref so the notification interval always sees the latest medications
+  useEffect(() => {
+    medsRef.current = medications;
+  }, [medications]);
+
+  // Restore stored notification preference once on mount (avoids re-asking)
+  useEffect(() => {
+    setNotifReady(true);
+    if (typeof window === "undefined" || typeof Notification === "undefined") return;
+    try {
+      const stored = localStorage.getItem("careos_notifications");
+      if (Notification.permission === "granted") {
+        setNotifEnabled(true);
+        localStorage.setItem("careos_notifications", "granted");
+      } else if (Notification.permission === "denied" || stored === "denied") {
+        setNotifDenied(true);
+      }
+    } catch {
+      // localStorage unavailable — ignore
+    }
+  }, []);
+
+  // Reminder loop: every 60s, notify for meds due within the next 5 minutes
+  useEffect(() => {
+    if (!notifEnabled) return;
+    const tick = () => {
+      const meds = medsRef.current;
+      if (!meds.length) return;
+      const today = new Date().toISOString().split("T")[0];
+      const now = new Date();
+      const windowEnd = new Date(now.getTime() + 5 * 60 * 1000);
+      const due = meds.filter((m) => {
+        if (!m.times) return false;
+        const log = m.logs?.find((l) => l.date === today);
+        if (log?.taken) return false;
+        const [h, min] = m.times.split(":").map(Number);
+        if (Number.isNaN(h)) return false;
+        const dueTime = new Date(now);
+        dueTime.setHours(h, min, 0, 0);
+        return dueTime >= now && dueTime <= windowEnd;
+      });
+      // Don't re-alert the same med more than once per 5 minutes
+      const COOLDOWN_MS = 5 * 60 * 1000;
+      const nowTs = now.getTime();
+      const freshDue = due.filter((m) => {
+        const last = lastNotifiedRef.current[m.id];
+        return !last || nowTs - last >= COOLDOWN_MS;
+      });
+      freshDue.forEach((m) => {
+        lastNotifiedRef.current[m.id] = nowTs;
+        if (document.visibilityState === "visible") {
+          toast(`Time for ${m.name}!`, {
+            duration: 10000,
+            icon: "⏰",
+            style: { fontSize: "1.15rem", fontWeight: 600, padding: "14px 18px" },
+          });
+          playBeep();
+        } else if (
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted"
+        ) {
+          try {
+            const n = new Notification("CareOS", {
+              body: `Time to take ${m.name}`,
+            });
+            n.onclick = () => {
+              window.focus();
+              n.close();
+            };
+          } catch {
+            // Notification constructor failed — ignore
+          }
+        }
+      });
+    };
+    tick();
+    const id = setInterval(tick, 60 * 1000);
+    return () => clearInterval(id);
+  }, [notifEnabled]);
 
   async function fetchData() {
     const q = query(
@@ -66,14 +154,59 @@ export default function Dashboard() {
     });
     setTodayMeds(due);
 
-    const evQ = query(
+    // Upcoming (today + future) plus a few recent past events so caregivers
+    // can see what was attended or missed. Range filters on `date` reuse the
+    // existing (familyGroupId, date) composite index.
+    const todayKey = toDateKey(new Date());
+    const upQ = query(
       collection(db, "events"),
       where("familyGroupId", "==", group.id),
+      where("date", ">=", todayKey),
       orderBy("date", "asc"),
       limit(5)
     );
-    const evSnap = await getDocs(evQ);
-    setEvents(evSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const pastQ = query(
+      collection(db, "events"),
+      where("familyGroupId", "==", group.id),
+      where("date", "<", todayKey),
+      orderBy("date", "asc"),
+      limit(5)
+    );
+    const [upSnap, pastSnap] = await Promise.all([getDocs(upQ), getDocs(pastQ)]);
+    const upcoming = upSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const past = pastSnap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => b.date.localeCompare(a.date)); // most recent first
+    setEvents([...upcoming, ...past]);
+  }
+
+  async function enableNotifications() {
+    if (typeof window === "undefined" || typeof Notification === "undefined") {
+      toast.error("Notifications aren't supported in this browser");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        setNotifEnabled(true);
+        try {
+          localStorage.setItem("careos_notifications", "granted");
+        } catch {
+          // ignore
+        }
+        toast.success("Notifications enabled");
+      } else {
+        setNotifDenied(true);
+        try {
+          localStorage.setItem("careos_notifications", "denied");
+        } catch {
+          // ignore
+        }
+        toast.error("Notifications were blocked. Enable them in your browser settings.");
+      }
+    } catch {
+      toast.error("Couldn't enable notifications");
+    }
   }
 
   if (loading) {
@@ -86,24 +219,37 @@ export default function Dashboard() {
 
   if (!user) return null;
 
-  const upcomingEvents = events.filter(
-    (e) => new Date(e.date) >= new Date(new Date().toISOString().split("T")[0])
-  );
+  const upcomingEvents = events.filter((e) => !isPastEvent(e));
+  const pastEvents = events.filter((e) => isPastEvent(e));
+
+  const showNotifButton =
+    notifReady && !notifEnabled && !notifDenied && typeof Notification !== "undefined";
 
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">
-            Good {getTimeOfDay()},{" "}
-            {user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "there"}
-          </h1>
-          <p className="text-slate-500 mt-1">
-            {familyGroup?.name
-              ? `Managing ${familyGroup.name}`
-              : "Set up your family group to get started"}
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">
+              Good {getTimeOfDay()},{" "}
+              {user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "there"}
+            </h1>
+            <p className="text-slate-500 mt-1">
+              {familyGroup?.name
+                ? `Managing ${familyGroup.name}`
+                : "Set up your family group to get started"}
+            </p>
+          </div>
+          {showNotifButton && (
+            <button
+              onClick={enableNotifications}
+              className="flex items-center gap-2 border border-slate-200 bg-white text-slate-600 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+            >
+              <Bell className="w-4 h-4" />
+              Enable Notifications
+            </button>
+          )}
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -209,38 +355,26 @@ export default function Dashboard() {
                   View all
                 </button>
               </div>
-              {upcomingEvents.length === 0 ? (
+              {events.length === 0 ? (
                 <div className="text-center py-8 text-slate-400">
                   <CalendarDays className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                  <p>No upcoming events</p>
+                  <p>No events yet</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {upcomingEvents.map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-                      onClick={() => router.push("/calendar")}
-                    >
-                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
-                        <span className="text-sm font-bold text-slate-700">
-                          {new Date(ev.date).getDate()}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-slate-900 truncate">{ev.title}</p>
-                        <div className="flex items-center gap-3 text-sm text-slate-500 mt-0.5">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            {formatTime12h(ev.time) || "All day"}
-                          </span>
-                          {ev.location && (
-                            <span className="truncate">{ev.location}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <EventRow key={ev.id} ev={ev} onClick={() => router.push("/calendar")} />
                   ))}
+                  {pastEvents.length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 pt-2">
+                        Recently Past
+                      </p>
+                      {pastEvents.map((ev) => (
+                        <EventRow key={ev.id} ev={ev} onClick={() => router.push("/calendar")} />
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -322,9 +456,79 @@ function QuickAction({ icon, label, onClick }) {
   );
 }
 
+function EventRow({ ev, onClick }) {
+  const status = getEventStatus(ev);
+  const attended = status === "attended";
+  const missed = status === "missed";
+  return (
+    <div
+      onClick={onClick}
+      className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+    >
+      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+        <span className="text-sm font-bold text-slate-700">
+          {new Date(ev.date).getDate()}
+        </span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p
+          className={`font-semibold truncate ${
+            attended ? "text-slate-400 line-through" : "text-slate-900"
+          }`}
+        >
+          {ev.title}
+        </p>
+        <div className="flex items-center gap-3 text-sm text-slate-500 mt-0.5">
+          <span className="flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5" />
+            {formatTime12h(ev.time) || "All day"}
+          </span>
+          {ev.location && <span className="truncate">{ev.location}</span>}
+        </div>
+      </div>
+      {attended && (
+        <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 flex-shrink-0 whitespace-nowrap">
+          <Check className="w-4 h-4" />
+          Attended
+        </span>
+      )}
+      {missed && (
+        <span className="flex items-center gap-1 text-xs font-semibold text-rose-600 flex-shrink-0 whitespace-nowrap">
+          <AlertCircle className="w-3.5 h-3.5" />
+          Missed — follow up?
+        </span>
+      )}
+    </div>
+  );
+}
+
 function getTimeOfDay() {
   const hour = new Date().getHours();
   if (hour < 12) return "morning";
   if (hour < 17) return "afternoon";
   return "evening";
+}
+
+// Soft reminder beep using the Web Audio API (safe to fail silently)
+function playBeep() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === "suspended") ctx.resume(); // may start suspended without a user gesture
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const t = ctx.currentTime;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.25, t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    osc.start(t);
+    osc.stop(t + 0.5);
+  } catch {
+    // audio not available — ignore
+  }
 }

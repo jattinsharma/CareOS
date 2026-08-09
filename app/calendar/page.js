@@ -9,14 +9,17 @@ import {
   where,
   getDocs,
   addDoc,
+  updateDoc,
+  doc,
   orderBy,
 } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
-import { CalendarDays, Plus, X, Clock, MapPin, Stethoscope, Pill, Calendar } from "lucide-react";
+import { CalendarDays, Plus, X, Clock, MapPin, Stethoscope, Pill, Calendar, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { format, addDays, startOfWeek, isSameMonth, isToday } from "date-fns";
 import TimePicker from "@/components/TimePicker";
 import { formatTime12h } from "@/lib/medUtils";
+import { getEventStatus, formatAttendedAt } from "@/lib/eventUtils";
 
 export default function CalendarPage() {
   const { user } = useAuth();
@@ -77,6 +80,19 @@ export default function CalendarPage() {
       type: "appointment",
     });
     toast.success("Event added!");
+  }
+
+  async function markAttended(ev) {
+    try {
+      const attendedAt = new Date().toISOString();
+      await updateDoc(doc(db, "events", ev.id), { status: "attended", attendedAt });
+      setEvents(
+        events.map((e) => (e.id === ev.id ? { ...e, status: "attended", attendedAt } : e))
+      );
+      toast.success("Marked as attended");
+    } catch {
+      toast.error("Couldn't update event");
+    }
   }
 
   const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
@@ -223,7 +239,15 @@ export default function CalendarPage() {
                     {dayEvents.slice(0, 2).map((ev) => (
                       <div
                         key={ev.id}
-                        className={`text-[10px] px-1.5 py-0.5 rounded-md truncate font-medium border ${typeColors[ev.type] || typeColors.other}`}
+                        className={`text-[10px] px-1.5 py-0.5 rounded-md truncate font-medium border ${
+                          typeColors[ev.type] || typeColors.other
+                        } ${
+                          getEventStatus(ev) === "attended"
+                            ? "opacity-60 line-through"
+                            : getEventStatus(ev) === "missed"
+                            ? "ring-1 ring-red-200"
+                            : ""
+                        }`}
                       >
                         {ev.time ? `${formatTime12h(ev.time)} ` : ""}
                         {ev.title}
@@ -254,51 +278,91 @@ export default function CalendarPage() {
             <div className="space-y-3">
               {events
                 .sort((a, b) => a.date.localeCompare(b.date))
-                .map((ev) => (
-                  <div
-                    key={ev.id}
-                    className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors"
-                  >
+                .map((ev) => {
+                  const status = getEventStatus(ev);
+                  const attended = status === "attended";
+                  const attendedAt = formatAttendedAt(ev.attendedAt);
+                  return (
                     <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        ev.type === "appointment"
-                          ? "bg-blue-50 text-blue-600"
-                          : ev.type === "medication"
-                          ? "bg-rose-50 text-rose-600"
-                          : "bg-slate-100 text-slate-600"
+                      key={ev.id}
+                      className={`flex items-center gap-4 p-4 rounded-xl border transition-colors ${
+                        attended
+                          ? "bg-emerald-50/50 border-emerald-100"
+                          : "bg-slate-50 border-slate-100 hover:border-slate-200"
                       }`}
                     >
-                      {typeIcons[ev.type] || typeIcons.other}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-900 truncate">{ev.title}</p>
-                      <div className="flex items-center gap-3 text-sm text-slate-500 mt-0.5 flex-wrap">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {format(new Date(ev.date), "MMM d, yyyy")}
-                          {ev.time && ` at ${formatTime12h(ev.time)}`}
-                        </span>
-                        {ev.location && (
-                          <span className="flex items-center gap-1 truncate">
-                            <MapPin className="w-3.5 h-3.5" />
-                            {ev.location}
+                      <div
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          attended ? "opacity-60 " : ""
+                        }${
+                          ev.type === "appointment"
+                            ? "bg-blue-50 text-blue-600"
+                            : ev.type === "medication"
+                            ? "bg-rose-50 text-rose-600"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {typeIcons[ev.type] || typeIcons.other}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`font-semibold truncate ${
+                            attended ? "text-slate-400 line-through" : "text-slate-900"
+                          }`}
+                        >
+                          {ev.title}
+                        </p>
+                        <div className="flex items-center gap-3 text-sm text-slate-500 mt-0.5 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {format(new Date(ev.date), "MMM d, yyyy")}
+                            {ev.time && ` at ${formatTime12h(ev.time)}`}
                           </span>
+                          {ev.location && (
+                            <span className="flex items-center gap-1 truncate">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {ev.location}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
+                        {status === "attended" ? (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 whitespace-nowrap">
+                            <Check className="w-4 h-4" />
+                            {attendedAt ? `Attended at ${attendedAt}` : "Attended"}
+                          </span>
+                        ) : (
+                          <>
+                            {status === "missed" && (
+                              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600 border border-red-100 whitespace-nowrap">
+                                Missed
+                              </span>
+                            )}
+                            <button
+                              onClick={() => markAttended(ev)}
+                              className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 border border-emerald-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              {status === "missed" ? "Mark attended" : "Mark as Attended"}
+                            </button>
+                          </>
                         )}
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border flex-shrink-0 ${
+                            typeColors[ev.type] || typeColors.other
+                          }`}
+                        >
+                          {ev.type === "appointment"
+                            ? "Appt"
+                            : ev.type === "medication"
+                            ? "Med"
+                            : "Event"}
+                        </span>
                       </div>
                     </div>
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border flex-shrink-0 ${
-                        typeColors[ev.type] || typeColors.other
-                      }`}
-                    >
-                      {ev.type === "appointment"
-                        ? "Appt"
-                        : ev.type === "medication"
-                        ? "Med"
-                        : "Event"}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           )}
         </div>
