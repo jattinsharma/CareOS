@@ -42,7 +42,15 @@ export default function PWAUpdater() {
         });
     };
 
-    window.addEventListener("load", register);
+    // Register as early as possible. Do NOT rely on the window "load" event:
+    // by the time React hydrates and this effect runs, "load" has usually
+    // already fired, so a load-only listener would never trigger and the
+    // service worker would silently never register (no PWA, no auto-update).
+    if (document.readyState === "complete") {
+      register();
+    } else {
+      window.addEventListener("load", register);
+    }
     return () => {
       window.removeEventListener("load", register);
       if (reloadTimer) clearTimeout(reloadTimer);

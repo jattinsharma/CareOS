@@ -1,9 +1,9 @@
 /* CareOS Service Worker — network-first caching strategy. */
-// v1.0.1 — on every deploy bump this comment AND CACHE_NAME in lockstep:
+// v1.0.2 — on every deploy bump this comment AND CACHE_NAME in lockstep:
 // the comment makes browsers byte-diff and fetch the new worker; the cache
 // name lets the activate handler prune the previous version's cache.
 
-const CACHE_NAME = "careos-shell-v2";
+const CACHE_NAME = "careos-shell-v3";
 
 // App shell pages to precache at install time.
 const SHELL_URLS = [

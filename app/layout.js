@@ -11,6 +11,10 @@ export const metadata = {
   title: "CareOS — Family Care Coordination",
   description: "One shared space for medications, appointments, documents, and communication. Built for families caring for aging parents or managing chronic conditions.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icons/icon-192x192.png",
+    apple: "/icons/icon-192x192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
