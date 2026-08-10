@@ -1,60 +1,36 @@
 "use client";
 
 import { useEffect } from "react";
-import toast from "react-hot-toast";
 
-// Registers the CareOS service worker and watches for updates. When a new
-// version installs (sw.js byte-differs from the active one), it tells the new
-// worker to skip waiting, shows a toast, and reloads after 2 seconds so the
-// user always ends up on the latest code without manually closing the app.
+// Service worker is DISABLED during beta to prevent stale-cache crashes on
+// installed PWAs. The app now always loads fresh from the network — no offline
+// support, but no risk of a stale cached shell either.
+// Re-enable later (e.g. after moving to next-pwa) once deploys stabilize.
 export default function PWAUpdater() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    let reloadTimer = null;
-
-    const register = () => {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((registration) => {
-          registration.addEventListener("updatefound", () => {
-            const newWorker = registration.installing;
-            if (!newWorker) return;
-
-            newWorker.addEventListener("statechange", () => {
-              // "installed" + an existing controller means this is an update,
-              // not the very first install (no controller on first load).
-              if (
-                newWorker.state === "installed" &&
-                navigator.serviceWorker.controller
-              ) {
-                newWorker.postMessage({ type: "SKIP_WAITING" });
-                // Duration matches the 2s reload delay so the toast stays
-                // visible until the page refreshes.
-                toast("Update available — refreshing...", { duration: 2000 });
-                reloadTimer = setTimeout(() => window.location.reload(), 2000);
-              }
-            });
-          });
-        })
-        .catch((err) => {
-          console.error("Service worker registration failed:", err);
-        });
-    };
-
-    // Register as early as possible. Do NOT rely on the window "load" event:
-    // by the time React hydrates and this effect runs, "load" has usually
-    // already fired, so a load-only listener would never trigger and the
-    // service worker would silently never register (no PWA, no auto-update).
-    if (document.readyState === "complete") {
-      register();
-    } else {
-      window.addEventListener("load", register);
-    }
-    return () => {
-      window.removeEventListener("load", register);
-      if (reloadTimer) clearTimeout(reloadTimer);
-    };
+    // Actively remove any previously registered worker so EXISTING installs
+    // don't keep serving a stale cached shell. Renaming sw.js alone can't do
+    // this — an already-registered worker survives until it is unregistered
+    // or the browser storage is cleared.
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) =>
+        // allSettled so a single failure can't surface as an unhandled
+        // rejection and so we can report how many were removed.
+        Promise.allSettled(registrations.map((r) => r.unregister())).then(
+          (results) => {
+            const removed = results.filter((r) => r.status === "fulfilled" && r.value).length;
+            console.log(
+              `[CareOS] Service worker disabled for reliability (removed ${removed} of ${registrations.length} registration(s))`
+            );
+          }
+        )
+      )
+      .catch((err) => {
+        console.error("[CareOS] Failed to remove service worker:", err);
+      });
   }, []);
 
   return null;
