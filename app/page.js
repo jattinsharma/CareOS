@@ -221,6 +221,27 @@ export default function LandingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Capture UTM params from the URL and stash them for attribution when the
+  // user signs up (read later by AuthProvider).
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
+      const utm = {};
+      const source = params.get("utm_source");
+      const medium = params.get("utm_medium");
+      const campaign = params.get("utm_campaign");
+      if (source) utm.source = source;
+      if (medium) utm.medium = medium;
+      if (campaign) utm.campaign = campaign;
+      if (Object.keys(utm).length > 0) {
+        localStorage.setItem("careos_utm", JSON.stringify(utm));
+      }
+    } catch {
+      // localStorage unavailable — attribution is best-effort, ignore.
+    }
+  }, []);
+
   function handleAuth() {
     router.push("/login");
   }
