@@ -19,6 +19,10 @@ import toast from "react-hot-toast";
  * memberRoles entry. On next login we ask them to pick who they are so the
  * family page can show names + roles instead of "Member 2".
  *
+ * The family creator/admin is NEVER prompted — their role is auto-set to
+ * "admin" when the group is created (and silently back-filled for groups
+ * that predate roles), so only invite joiners without a role see the modal.
+ *
  * Mounted once in the root layout, above every page. Best-effort: a fetch
  * failure must never block the app.
  */
@@ -42,10 +46,19 @@ export default function RolePrompt() {
         const snap = await getDocs(q);
         if (cancelled || snap.empty) return;
         const g = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        if (g.memberRoles?.[user.uid]) return; // role already set — nothing to do
+        // The creator/admin is never asked who they are: their identity is
+        // already marked by createdBy (Admin crown). Silently back-fill an
+        // "admin" role for legacy groups so the record is complete.
+        if (g.createdBy === user.uid) {
+          selfHealCreatorRole(g, user).catch(() => {
+            // Best-effort — ignore failures.
+          });
+          return;
+        }
+        // Only invite joiners without a role are prompted.
         setGroup(g);
-        // No role entry → prompt (covers the group creator and every member
-        // who joined before this feature existed).
-        if (!g.memberRoles?.[user.uid]) setOpen(true);
+        setOpen(true);
       } catch {
         // Best-effort — ignore failures.
       } finally {
@@ -56,6 +69,17 @@ export default function RolePrompt() {
       cancelled = true;
     };
   }, [loading, user]);
+
+  // One-time self-heal: a creator whose group predates roles gets an "admin"
+  // entry written silently (field-path write, own key only, so the rules and
+  // concurrent member writes are unaffected). Idempotent — only called when
+  // the entry is missing.
+  async function selfHealCreatorRole(group, user) {
+    const name = user.displayName || user.email?.split("@")[0] || "You";
+    await updateDoc(doc(db, "familyGroups", group.id), {
+      [`memberRoles.${user.uid}`]: { role: "admin", name },
+    });
+  }
 
   if (loading || pending || !open || !group) return null;
 

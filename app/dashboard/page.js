@@ -28,7 +28,7 @@ import {
 import { frequencyLabel, formatTime12h } from "@/lib/medUtils";
 import { getEventStatus, isPastEvent, toDateKey } from "@/lib/eventUtils";
 import { getMedStatus } from "@/lib/medStatus";
-import { calculateStreaks } from "@/lib/streak";
+import { calculateStreaks, calculateMissStats } from "@/lib/streak";
 import { markMedTaken, markMedMissed } from "@/lib/medActions";
 import { getOwnerLabel, getMemberName } from "@/lib/family";
 import toast from "react-hot-toast";
@@ -304,6 +304,7 @@ export default function Dashboard() {
     return st.state === "due" || st.state === "overdue" || st.state === "upcoming";
   });
   const streaks = calculateStreaks(medications);
+  const missStats = calculateMissStats(medications);
 
   const showNotifButton =
     notifReady && !notifEnabled && !notifDenied && typeof Notification !== "undefined";
@@ -539,8 +540,29 @@ export default function Dashboard() {
                     {streaks.best} day{streaks.best === 1 ? "" : "s"}
                   </span>
                 </p>
+                <div className="border-t border-slate-100 my-2" />
+                <p className="flex items-center justify-between">
+                  <span className="text-slate-600">❌ Misses this week</span>
+                  <span
+                    className={`font-bold ${
+                      missStats.weeklyMisses > 0 ? "text-red-600" : "text-emerald-600"
+                    }`}
+                  >
+                    {missStats.weeklyMisses}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between">
+                  <span className="text-slate-600">📉 Total misses</span>
+                  <span className="font-bold text-slate-700">{missStats.totalMisses}</span>
+                </p>
               </div>
-              {streaks.current === 0 && (
+              {missStats.currentMissStreak > 0 && (
+                <p className="mt-3 text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  {missStats.currentMissStreak} day streak of missed doses
+                </p>
+              )}
+              {streaks.current === 0 && missStats.currentMissStreak === 0 && (
                 <p className="text-xs text-slate-400 mt-3">
                   Take all of today&apos;s meds to start (or keep) your streak.
                 </p>

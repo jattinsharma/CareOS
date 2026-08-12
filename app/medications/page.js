@@ -35,7 +35,13 @@ import {
 } from "@/lib/medUtils";
 import TimePicker from "@/components/TimePicker";
 import { getMedStatus, findLogForDate } from "@/lib/medStatus";
-import { medStreak, isScheduledOn, isTakenOn } from "@/lib/streak";
+import {
+  medStreak,
+  isScheduledOn,
+  isTakenOn,
+  medHistoryStats,
+  medLifetimeMisses,
+} from "@/lib/streak";
 import { markMedTaken, markMedMissed, reconcileAutoMissed } from "@/lib/medActions";
 import { toDateKey } from "@/lib/eventUtils";
 import {
@@ -445,6 +451,8 @@ export default function MedicationsPage() {
               const isOverdue = status.state === "overdue";
               const isDue = status.state === "due";
               const streak = medStreak(med);
+              const hStats = medHistoryStats(med);
+              const lifetimeMisses = medLifetimeMisses(med);
               const isExpanded = expandedMed === med.id;
               const ownerUid = med.ownerUid || med.createdBy;
               const ownerLabel = getOwnerLabel(
@@ -548,6 +556,26 @@ export default function MedicationsPage() {
                             {streak > 0 && (
                               <span className="text-amber-600 font-medium">
                                 {streak} day streak
+                              </span>
+                            )}
+                            {lifetimeMisses > 0 && (
+                              <span className="text-red-600 font-medium">
+                                ❌ Missed {lifetimeMisses} time
+                                {lifetimeMisses === 1 ? "" : "s"} total
+                              </span>
+                            )}
+                            {hStats.total > 0 && (
+                              <span
+                                className={`font-medium ${
+                                  hStats.rate >= 80
+                                    ? "text-emerald-600"
+                                    : hStats.rate >= 50
+                                    ? "text-amber-600"
+                                    : "text-red-600"
+                                }`}
+                                title={`${hStats.taken} taken, ${hStats.missed} missed over the last 90 days`}
+                              >
+                                📊 {hStats.rate}% adherence
                               </span>
                             )}
                           </div>

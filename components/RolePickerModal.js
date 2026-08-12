@@ -6,7 +6,8 @@ import { X, Users } from "lucide-react";
 
 /**
  * "Who are you in this family?" role selector.
- * Shared by the join flow, the create flow, and the migration prompt.
+ * Shared by the join flow and the migration prompt. (Creating a group never
+ * opens this — the creator's role is auto-set to "admin".)
  *
  * Props:
  *  - open:        bool

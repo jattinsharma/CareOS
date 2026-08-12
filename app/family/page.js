@@ -18,11 +18,13 @@ import { Users, Copy, Check, Plus, UserPlus, Crown, Pencil } from "lucide-react"
 import toast from "react-hot-toast";
 import RolePickerModal from "@/components/RolePickerModal";
 import { getRoleLabel, getRoleEmoji } from "@/lib/family";
+import { calculateMemberStreaks, calculateMemberMissStats } from "@/lib/streak";
 
-// roleModal drives the shared role picker for three flows:
-//   { mode: "create", name, code }  — new group, creator picks their role
-//   { mode: "join",   id, data }    — joining an existing group
-//   { mode: "edit" }                — changing your own role later
+// roleModal drives the shared role picker for two flows:
+//   { mode: "join", id, data } — joining an existing group (role required)
+//   { mode: "edit" }           — changing your own role later
+// Creating a group never opens the picker: the creator's role is auto-set to
+// "admin" in startCreate.
 export default function FamilyPage() {
   const { user } = useAuth();
   const [familyGroup, setFamilyGroup] = useState(null);
@@ -32,6 +34,7 @@ export default function FamilyPage() {
   const [loading, setLoading] = useState(true);
   const [roleModal, setRoleModal] = useState(null);
   const [savingRole, setSavingRole] = useState(false);
+  const [medications, setMedications] = useState([]);
 
   useEffect(() => {
     if (!user) return;
@@ -40,27 +43,71 @@ export default function FamilyPage() {
 
   async function checkFamilyGroup() {
     setLoading(true);
-    const q = query(
-      collection(db, "familyGroups"),
-      where("members", "array-contains", user.uid)
-    );
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      const group = { id: snap.docs[0].id, ...snap.docs[0].data() };
-      setFamilyGroup(group);
+    try {
+      const q = query(
+        collection(db, "familyGroups"),
+        where("members", "array-contains", user.uid)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const group = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        setFamilyGroup(group);
+        loadMeds(group);
+      }
+    } catch {
+      // Keep the page usable — a failed group query just leaves the
+      // create/join UI on screen.
     }
     setLoading(false);
   }
 
-  // Step 1 of create: validate the name and open the role picker. The group is
-  // written (with the creator's role) only after they pick who they are.
-  function startCreate() {
+  // Best-effort fetch of the group's medications for the per-member streak /
+  // miss lines. A failure must never block the page (the group UI renders
+  // fine without the stats).
+  async function loadMeds(group) {
+    try {
+      const medQ = query(
+        collection(db, "medications"),
+        where("familyGroupId", "==", group.id)
+      );
+      const medSnap = await getDocs(medQ);
+      setMedications(medSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch {
+      // ignore — the stats lines just won't show
+    }
+  }
+
+  // Create the group directly — the creator is never asked to pick a role;
+  // their identity is createdBy (Admin crown) and the stored role is "admin".
+  async function startCreate() {
     if (!groupName.trim()) {
       toast.error("Please enter a family name");
       return;
     }
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setRoleModal({ mode: "create", name: groupName.trim(), code });
+    const name = user.displayName || user.email?.split("@")[0] || "You";
+    try {
+      const ref = await addDoc(collection(db, "familyGroups"), {
+        name: groupName.trim(),
+        createdBy: user.uid,
+        members: [user.uid],
+        inviteCode: code,
+        createdAt: new Date().toISOString(),
+        memberRoles: { [user.uid]: { role: "admin", name } },
+      });
+      setFamilyGroup({
+        id: ref.id,
+        name: groupName.trim(),
+        members: [user.uid],
+        inviteCode: code,
+        createdBy: user.uid,
+        memberRoles: { [user.uid]: { role: "admin", name } },
+      });
+      loadMeds({ id: ref.id });
+      toast.success("Family group created!");
+    } catch {
+      toast.error("Something went wrong — please try again");
+    }
   }
 
   // Step 1 of join: validate the invite code, fetch the group, and open the
@@ -88,31 +135,15 @@ export default function FamilyPage() {
     setRoleModal({ mode: "join", id: groupDoc.id, data: groupData });
   }
 
-  // Step 2 for all flows: persist the chosen role (+ membership for joins).
+  // Step 2 for the join / edit flows: persist the chosen role (+ membership
+  // for joins). The create flow never reaches here (startCreate auto-sets
+  // the creator's "admin" role).
   async function handleRoleSelect(role) {
     setSavingRole(true);
     const name = user.displayName || user.email?.split("@")[0] || "Member";
     const entry = { role, name };
     try {
-      if (roleModal.mode === "create") {
-        const ref = await addDoc(collection(db, "familyGroups"), {
-          name: roleModal.name,
-          createdBy: user.uid,
-          members: [user.uid],
-          inviteCode: roleModal.code,
-          createdAt: new Date().toISOString(),
-          memberRoles: { [user.uid]: entry },
-        });
-        setFamilyGroup({
-          id: ref.id,
-          name: roleModal.name,
-          members: [user.uid],
-          inviteCode: roleModal.code,
-          createdBy: user.uid,
-          memberRoles: { [user.uid]: entry },
-        });
-        toast.success("Family group created!");
-      } else if (roleModal.mode === "join") {
+      if (roleModal.mode === "join") {
         const groupData = roleModal.data;
         // Field-path write so a concurrent join can never clobber another
         // member's freshly-written role entry (atomic per key).
@@ -126,6 +157,7 @@ export default function FamilyPage() {
           members: [...groupData.members, user.uid],
           memberRoles: { ...(groupData.memberRoles || {}), [user.uid]: entry },
         });
+        loadMeds({ id: roleModal.id });
         toast.success("Joined family group!");
       } else {
         await updateDoc(doc(db, "familyGroups", familyGroup.id), {
@@ -290,6 +322,11 @@ export default function FamilyPage() {
                   const roleLabel = entry ? getRoleLabel(entry.role) : null;
                   const roleEmoji = entry ? getRoleEmoji(entry.role) : null;
                   const initial = (name || (isYou ? "Y" : `M${i + 1}`))[0].toUpperCase();
+                  const memberMeds = medications.filter(
+                    (m) => (m.ownerUid || m.createdBy) === memberId
+                  );
+                  const memberStreak = calculateMemberStreaks(medications, memberId);
+                  const memberMiss = calculateMemberMissStats(medications, memberId);
                   return (
                     <div
                       key={memberId}
@@ -307,7 +344,9 @@ export default function FamilyPage() {
                           <span className="text-sm font-medium text-slate-900">
                             {isYou ? (name ? `You (${name})` : "You") : name || `Member ${i + 1}`}
                           </span>
-                          {roleLabel && (
+                          {/* The creator's stored "admin" role is already shown
+                              by the crown badge — don't render a duplicate chip. */}
+                          {roleLabel && entry.role !== "admin" && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-full border border-slate-200">
                               {roleEmoji} {roleLabel}
                             </span>
@@ -319,6 +358,23 @@ export default function FamilyPage() {
                             </span>
                           )}
                         </div>
+                        {memberMeds.length > 0 && (
+                          <p className="text-xs text-slate-500 mt-1 flex items-center gap-2.5 flex-wrap">
+                            <span>
+                              🔥 {memberStreak.current} day streak
+                            </span>
+                            <span
+                              className={
+                                memberMiss.weeklyMisses > 0
+                                  ? "text-red-600 font-medium"
+                                  : ""
+                              }
+                            >
+                              ❌ {memberMiss.weeklyMisses} miss
+                              {memberMiss.weeklyMisses === 1 ? "" : "es"} this week
+                            </span>
+                          </p>
+                        )}
                       </div>
                       {isYou && !entry && (
                         <button
@@ -351,19 +407,11 @@ export default function FamilyPage() {
       <RolePickerModal
         open={!!roleModal}
         title={
-          roleModal?.mode === "create"
-            ? `Create ${roleModal.name}`
-            : roleModal?.mode === "join"
+          roleModal?.mode === "join"
             ? `Join ${roleModal.data?.name}`
             : "Tell us who you are"
         }
-        ctaLabel={
-          roleModal?.mode === "create"
-            ? "Create Family"
-            : roleModal?.mode === "join"
-            ? "Join Family"
-            : "Save"
-        }
+        ctaLabel={roleModal?.mode === "join" ? "Join Family" : "Save"}
         closable={false}
         submitting={savingRole}
         onSelect={handleRoleSelect}
