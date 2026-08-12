@@ -14,9 +14,15 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
-import { Users, Copy, Check, Plus, UserPlus, Crown } from "lucide-react";
+import { Users, Copy, Check, Plus, UserPlus, Crown, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
+import RolePickerModal from "@/components/RolePickerModal";
+import { getRoleLabel, getRoleEmoji } from "@/lib/family";
 
+// roleModal drives the shared role picker for three flows:
+//   { mode: "create", name, code }  — new group, creator picks their role
+//   { mode: "join",   id, data }    — joining an existing group
+//   { mode: "edit" }                — changing your own role later
 export default function FamilyPage() {
   const { user } = useAuth();
   const [familyGroup, setFamilyGroup] = useState(null);
@@ -24,6 +30,8 @@ export default function FamilyPage() {
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [roleModal, setRoleModal] = useState(null);
+  const [savingRole, setSavingRole] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -44,30 +52,20 @@ export default function FamilyPage() {
     setLoading(false);
   }
 
-  async function createGroup() {
+  // Step 1 of create: validate the name and open the role picker. The group is
+  // written (with the creator's role) only after they pick who they are.
+  function startCreate() {
     if (!groupName.trim()) {
       toast.error("Please enter a family name");
       return;
     }
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const ref = await addDoc(collection(db, "familyGroups"), {
-      name: groupName.trim(),
-      createdBy: user.uid,
-      members: [user.uid],
-      inviteCode: code,
-      createdAt: new Date().toISOString(),
-    });
-    setFamilyGroup({
-      id: ref.id,
-      name: groupName.trim(),
-      members: [user.uid],
-      inviteCode: code,
-      createdBy: user.uid,
-    });
-    toast.success("Family group created!");
+    setRoleModal({ mode: "create", name: groupName.trim(), code });
   }
 
-  async function joinGroup() {
+  // Step 1 of join: validate the invite code, fetch the group, and open the
+  // role picker. Membership is written only after they pick who they are.
+  async function startJoin() {
     if (!joinCode.trim()) {
       toast.error("Please enter an invite code");
       return;
@@ -87,15 +85,64 @@ export default function FamilyPage() {
       toast.error("You're already in this group");
       return;
     }
-    await updateDoc(doc(db, "familyGroups", groupDoc.id), {
-      members: arrayUnion(user.uid),
-    });
-    setFamilyGroup({
-      id: groupDoc.id,
-      ...groupData,
-      members: [...groupData.members, user.uid],
-    });
-    toast.success("Joined family group!");
+    setRoleModal({ mode: "join", id: groupDoc.id, data: groupData });
+  }
+
+  // Step 2 for all flows: persist the chosen role (+ membership for joins).
+  async function handleRoleSelect(role) {
+    setSavingRole(true);
+    const name = user.displayName || user.email?.split("@")[0] || "Member";
+    const entry = { role, name };
+    try {
+      if (roleModal.mode === "create") {
+        const ref = await addDoc(collection(db, "familyGroups"), {
+          name: roleModal.name,
+          createdBy: user.uid,
+          members: [user.uid],
+          inviteCode: roleModal.code,
+          createdAt: new Date().toISOString(),
+          memberRoles: { [user.uid]: entry },
+        });
+        setFamilyGroup({
+          id: ref.id,
+          name: roleModal.name,
+          members: [user.uid],
+          inviteCode: roleModal.code,
+          createdBy: user.uid,
+          memberRoles: { [user.uid]: entry },
+        });
+        toast.success("Family group created!");
+      } else if (roleModal.mode === "join") {
+        const groupData = roleModal.data;
+        // Field-path write so a concurrent join can never clobber another
+        // member's freshly-written role entry (atomic per key).
+        await updateDoc(doc(db, "familyGroups", roleModal.id), {
+          members: arrayUnion(user.uid),
+          [`memberRoles.${user.uid}`]: entry,
+        });
+        setFamilyGroup({
+          id: roleModal.id,
+          ...groupData,
+          members: [...groupData.members, user.uid],
+          memberRoles: { ...(groupData.memberRoles || {}), [user.uid]: entry },
+        });
+        toast.success("Joined family group!");
+      } else {
+        await updateDoc(doc(db, "familyGroups", familyGroup.id), {
+          [`memberRoles.${user.uid}`]: entry,
+        });
+        setFamilyGroup((g) => ({
+          ...g,
+          memberRoles: { ...(g.memberRoles || {}), [user.uid]: entry },
+        }));
+        toast.success("Role saved!");
+      }
+      setRoleModal(null);
+    } catch {
+      toast.error("Something went wrong — please try again");
+    } finally {
+      setSavingRole(false);
+    }
   }
 
   const copyCode = () => {
@@ -141,11 +188,11 @@ export default function FamilyPage() {
                 placeholder="e.g., The Johnson Family"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && createGroup()}
+                onKeyDown={(e) => e.key === "Enter" && startCreate()}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent mb-4 text-slate-900 placeholder:text-slate-400"
               />
               <button
-                onClick={createGroup}
+                onClick={startCreate}
                 className="w-full bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white py-3 rounded-xl font-semibold transition-colors"
               >
                 Create Group
@@ -178,12 +225,12 @@ export default function FamilyPage() {
                 placeholder="e.g., A1B2C3"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === "Enter" && joinGroup()}
+                onKeyDown={(e) => e.key === "Enter" && startJoin()}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4 text-slate-900 placeholder:text-slate-400 uppercase tracking-widest font-mono"
                 maxLength={6}
               />
               <button
-                onClick={joinGroup}
+                onClick={startJoin}
                 className="w-full bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white py-3 rounded-xl font-semibold transition-colors"
               >
                 Join Group
@@ -235,26 +282,61 @@ export default function FamilyPage() {
               </h3>
               <div className="space-y-2">
                 {familyGroup.members.map((memberId, i) => {
+                  const entry = familyGroup.memberRoles?.[memberId];
                   const isYou = memberId === user.uid;
                   const isAdmin = memberId === familyGroup.createdBy;
+                  const name =
+                    entry?.name || (isYou ? user.displayName || user.email?.split("@")[0] || "" : "");
+                  const roleLabel = entry ? getRoleLabel(entry.role) : null;
+                  const roleEmoji = entry ? getRoleEmoji(entry.role) : null;
+                  const initial = (name || (isYou ? "Y" : `M${i + 1}`))[0].toUpperCase();
                   return (
                     <div
                       key={memberId}
                       className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100"
                     >
-                      <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm text-sm font-bold text-slate-600">
-                        {isYou ? "Y" : `M${i + 1}`}
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center shadow-sm text-sm font-bold ${
+                          isYou ? "bg-rose-100 text-rose-700" : "bg-white text-slate-600"
+                        }`}
+                      >
+                        {initial}
                       </div>
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-slate-900">
-                          {isYou ? "You" : `Member ${i + 1}`}
-                        </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-slate-900">
+                            {isYou ? (name ? `You (${name})` : "You") : name || `Member ${i + 1}`}
+                          </span>
+                          {roleLabel && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-full border border-slate-200">
+                              {roleEmoji} {roleLabel}
+                            </span>
+                          )}
+                          {isAdmin && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-full border border-amber-100">
+                              <Crown className="w-3 h-3" />
+                              Admin
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {isAdmin && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded-full border border-amber-100">
-                          <Crown className="w-3 h-3" />
-                          Admin
-                        </span>
+                      {isYou && !entry && (
+                        <button
+                          onClick={() => setRoleModal({ mode: "edit" })}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold rounded-full border border-amber-200 transition-colors flex-shrink-0"
+                        >
+                          Set my role
+                        </button>
+                      )}
+                      {isYou && entry && (
+                        <button
+                          onClick={() => setRoleModal({ mode: "edit" })}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
+                          title="Change my role"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          Edit
+                        </button>
                       )}
                     </div>
                   );
@@ -264,6 +346,28 @@ export default function FamilyPage() {
           </div>
         )}
       </div>
+
+      {/* Shared role picker (create / join / edit) */}
+      <RolePickerModal
+        open={!!roleModal}
+        title={
+          roleModal?.mode === "create"
+            ? `Create ${roleModal.name}`
+            : roleModal?.mode === "join"
+            ? `Join ${roleModal.data?.name}`
+            : "Tell us who you are"
+        }
+        ctaLabel={
+          roleModal?.mode === "create"
+            ? "Create Family"
+            : roleModal?.mode === "join"
+            ? "Join Family"
+            : "Save"
+        }
+        closable={false}
+        submitting={savingRole}
+        onSelect={handleRoleSelect}
+      />
     </div>
   );
 }

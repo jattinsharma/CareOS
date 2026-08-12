@@ -23,10 +23,22 @@ import {
   Activity,
   Check,
   Bell,
+  X,
 } from "lucide-react";
 import { frequencyLabel, formatTime12h } from "@/lib/medUtils";
 import { getEventStatus, isPastEvent, toDateKey } from "@/lib/eventUtils";
+import { getMedStatus } from "@/lib/medStatus";
+import { calculateStreaks } from "@/lib/streak";
+import { markMedTaken, markMedMissed } from "@/lib/medActions";
+import { getOwnerLabel, getMemberName } from "@/lib/family";
 import toast from "react-hot-toast";
+
+// "Dad's" / "Mom's" / … for a med, based on its owner (or the creator for
+// meds added before ownership existed).
+function medOwnerLabel(group, med, user) {
+  const uid = med.ownerUid || med.createdBy;
+  return getOwnerLabel(group, uid, getMemberName(group, uid, user));
+}
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
@@ -34,12 +46,12 @@ export default function Dashboard() {
   const [familyGroup, setFamilyGroup] = useState(null);
   const [medications, setMedications] = useState([]);
   const [events, setEvents] = useState([]);
-  const [todayMeds, setTodayMeds] = useState([]);
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [notifDenied, setNotifDenied] = useState(false);
   const [notifReady, setNotifReady] = useState(false);
   const medsRef = useRef(medications);
   const lastNotifiedRef = useRef({});
+  const lastOverdueNudgeRef = useRef({});
 
   useEffect(() => {
     if (!user) return;
@@ -74,11 +86,19 @@ export default function Dashboard() {
     const tick = () => {
       const meds = medsRef.current;
       if (!meds.length) return;
-      const today = new Date().toISOString().split("T")[0];
       const now = new Date();
+      // Owner label for notification bodies ("Zincate (Dad's)").
+      const ownerFor = (m) => {
+        const uid = m.ownerUid || m.createdBy;
+        const label = getOwnerLabel(familyGroup, uid, getMemberName(familyGroup, uid, user));
+        return label ? ` (${label})` : "";
+      };
+      // Local date key, matching how taken/missed logs are written.
+      const today = toDateKey(now);
       const windowEnd = new Date(now.getTime() + 5 * 60 * 1000);
       const due = meds.filter((m) => {
         if (!m.times) return false;
+        if (m.frequency === "As needed") return false; // no required window
         const log = m.logs?.find((l) => l.date === today);
         if (log?.taken) return false;
         const [h, min] = m.times.split(":").map(Number);
@@ -97,7 +117,7 @@ export default function Dashboard() {
       freshDue.forEach((m) => {
         lastNotifiedRef.current[m.id] = nowTs;
         if (document.visibilityState === "visible") {
-          toast(`Time for ${m.name}!`, {
+          toast(`Time for ${m.name}${ownerFor(m)}!`, {
             duration: 10000,
             icon: "⏰",
             style: { fontSize: "1.15rem", fontWeight: 600, padding: "14px 18px" },
@@ -109,7 +129,44 @@ export default function Dashboard() {
         ) {
           try {
             const n = new Notification("KinOS", {
-              body: `Time to take ${m.name}`,
+              body: `Time to take ${m.name}${ownerFor(m)}`,
+            });
+            n.onclick = () => {
+              window.focus();
+              n.close();
+            };
+          } catch {
+            // Notification constructor failed — ignore
+          }
+        }
+      });
+
+      // Overdue nudge: remind once ~30–90 min after the scheduled time if the
+      // dose is still open, so the user can mark it taken or missed.
+      const OVERDUE_AFTER_MS = 30 * 60 * 1000;
+      const NUDGE_UNTIL_MS = 90 * 60 * 1000;
+      meds.forEach((m) => {
+        const st = getMedStatus(m, now);
+        if (st.state !== "overdue" || !st.scheduled) return;
+        const age = now.getTime() - st.scheduled.getTime();
+        if (age < OVERDUE_AFTER_MS || age > NUDGE_UNTIL_MS) return;
+        const key = `${m.id}:${today}`;
+        if (lastOverdueNudgeRef.current[key]) return;
+        lastOverdueNudgeRef.current[key] = nowTs;
+        if (document.visibilityState === "visible") {
+          toast(`Did you take ${m.name}${ownerFor(m)}?`, {
+            duration: 12000,
+            icon: "💊",
+            style: { fontSize: "1.1rem", fontWeight: 600, padding: "14px 18px" },
+          });
+          playBeep();
+        } else if (
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted"
+        ) {
+          try {
+            const n = new Notification("KinOS", {
+              body: `Did you take ${m.name}${ownerFor(m)}? Tap to mark taken or missed.`,
             });
             n.onclick = () => {
               window.focus();
@@ -124,7 +181,9 @@ export default function Dashboard() {
     tick();
     const id = setInterval(tick, 60 * 1000);
     return () => clearInterval(id);
-  }, [notifEnabled]);
+    // familyGroup is needed for owner labels in notification bodies; the
+    // interval is simply recreated when the group loads (once per session).
+  }, [notifEnabled, familyGroup]);
 
   async function fetchData() {
     const q = query(
@@ -146,13 +205,6 @@ export default function Dashboard() {
     const medSnap = await getDocs(medQ);
     const meds = medSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     setMedications(meds);
-
-    const today = new Date().toISOString().split("T")[0];
-    const due = meds.filter((m) => {
-      const lastLog = m.logs?.find((l) => l.date === today);
-      return !lastLog || !lastLog.taken;
-    });
-    setTodayMeds(due);
 
     // Upcoming (today + future) plus a few recent past events so caregivers
     // can see what was attended or missed. Range filters on `date` reuse the
@@ -209,6 +261,30 @@ export default function Dashboard() {
     }
   }
 
+  async function handleMarkTaken(medId) {
+    try {
+      const entry = await markMedTaken(medId, user);
+      setMedications((cur) =>
+        cur.map((m) => (m.id === medId ? { ...m, logs: [...(m.logs || []), entry] } : m))
+      );
+      toast.success("Marked as taken!");
+    } catch {
+      toast.error("Couldn't update medication");
+    }
+  }
+
+  async function handleMarkMissed(medId) {
+    try {
+      const entry = await markMedMissed(medId, user);
+      setMedications((cur) =>
+        cur.map((m) => (m.id === medId ? { ...m, logs: [...(m.logs || []), entry] } : m))
+      );
+      toast("Marked as missed", { icon: "✗" });
+    } catch {
+      toast.error("Couldn't update medication");
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -221,6 +297,13 @@ export default function Dashboard() {
 
   const upcomingEvents = events.filter((e) => !isPastEvent(e));
   const pastEvents = events.filter((e) => isPastEvent(e));
+
+  // Today's open doses (due, overdue, or upcoming) — taken/missed drop off.
+  const todayMeds = medications.filter((m) => {
+    const st = getMedStatus(m);
+    return st.state === "due" || st.state === "overdue" || st.state === "upcoming";
+  });
+  const streaks = calculateStreaks(medications);
 
   const showNotifButton =
     notifReady && !notifEnabled && !notifDenied && typeof Notification !== "undefined";
@@ -311,31 +394,81 @@ export default function Dashboard() {
                   </h2>
                 </div>
                 <div className="space-y-3">
-                  {todayMeds.map((med) => (
-                    <div
-                      key={med.id}
-                      className="flex items-center justify-between p-4 bg-rose-50/60 rounded-xl border border-rose-100"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                          <Pill className="w-5 h-5 text-rose-500" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-900">{med.name}</p>
-                          <p className="text-sm text-slate-500">
-                            {med.dosage} — {frequencyLabel(med.frequency)} at {formatTime12h(med.times)}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => router.push("/medications")}
-                        className="text-sm font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 px-3 py-2 hover:bg-rose-100 rounded-lg transition-colors"
+                  {todayMeds.map((med) => {
+                    const st = getMedStatus(med);
+                    const isOverdue = st.state === "overdue";
+                    const isDue = st.state === "due";
+                    const owner = medOwnerLabel(familyGroup, med, user);
+                    return (
+                      <div
+                        key={med.id}
+                        className={`flex items-center justify-between gap-3 p-4 rounded-xl border ${
+                          isOverdue
+                            ? "bg-red-50/70 border-red-200"
+                            : isDue
+                            ? "bg-rose-50/70 border-rose-200"
+                            : "bg-white/70 border-slate-200"
+                        }`}
                       >
-                        Mark taken
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                            <Pill
+                              className={`w-5 h-5 ${
+                                isOverdue
+                                  ? "text-red-500"
+                                  : isDue
+                                  ? "text-rose-500"
+                                  : "text-slate-500"
+                              }`}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate">
+                              {med.name}
+                              {owner && (
+                                <span className="font-normal text-slate-400 text-sm"> ({owner})</span>
+                              )}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              {med.dosage} — {frequencyLabel(med.frequency)} at {formatTime12h(med.times)}
+                            </p>
+                            {isOverdue && (
+                              <p className="text-xs font-semibold text-red-600 mt-0.5 flex items-center gap-1">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                Overdue — did you take it?
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {isOverdue ? (
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => handleMarkTaken(med.id)}
+                              className="inline-flex items-center gap-1 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              Taken
+                            </button>
+                            <button
+                              onClick={() => handleMarkMissed(med.id)}
+                              className="inline-flex items-center gap-1 bg-white hover:bg-red-50 text-red-600 border border-red-300 hover:border-red-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              Missed
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleMarkTaken(med.id)}
+                            className="text-sm font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 px-3 py-2 hover:bg-rose-100 rounded-lg transition-colors flex-shrink-0"
+                          >
+                            Mark taken
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -389,6 +522,29 @@ export default function Dashboard() {
               <button className="bg-white text-rose-600 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-rose-50 transition-colors w-full">
                 Share Feedback
               </button>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <h3 className="font-semibold text-slate-900 mb-4">Streaks</h3>
+              <div className="space-y-2 text-sm">
+                <p className="flex items-center justify-between">
+                  <span className="text-slate-600">🔥 Current streak</span>
+                  <span className="font-bold text-amber-600">
+                    {streaks.current} day{streaks.current === 1 ? "" : "s"}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between">
+                  <span className="text-slate-600">🏆 Best streak</span>
+                  <span className="font-bold text-violet-600">
+                    {streaks.best} day{streaks.best === 1 ? "" : "s"}
+                  </span>
+                </p>
+              </div>
+              {streaks.current === 0 && (
+                <p className="text-xs text-slate-400 mt-3">
+                  Take all of today&apos;s meds to start (or keep) your streak.
+                </p>
+              )}
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 p-6">

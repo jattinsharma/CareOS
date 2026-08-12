@@ -9,8 +9,11 @@ const PUBLIC_ROUTES = ["/", "/pricing", "/login"];
 
 /**
  * Route guard:
- * - Logged-in users visiting a public route are sent to /dashboard.
  * - Logged-out users visiting any protected page are sent to "/".
+ * - Logged-in users may stay on public routes (no auto-redirect). An
+ *   immediate router.replace on mount can crash the Android WebAPK
+ *   with "failed to start", so logged-in users reach /dashboard via
+ *   the "Go to Dashboard" button on the landing page instead.
  */
 export default function AuthGate({ children }) {
   const { user, loading } = useAuth();
@@ -19,9 +22,8 @@ export default function AuthGate({ children }) {
 
   useEffect(() => {
     if (loading) return;
-    if (PUBLIC_ROUTES.includes(pathname)) {
-      if (user) router.replace("/dashboard");
-    } else if (!user) {
+    // No redirect for logged-in users on public routes (WebAPK crash fix).
+    if (!PUBLIC_ROUTES.includes(pathname) && !user) {
       router.replace("/");
     }
   }, [loading, user, pathname, router]);

@@ -208,10 +208,10 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState(null);
   const [scrolled, setScrolled] = useState(false);
 
-  // Logged-in users go straight to the app.
-  useEffect(() => {
-    if (!loading && user) router.replace("/dashboard");
-  }, [loading, user, router]);
+  // No auto-redirect here: an immediate router.replace on mount can crash the
+  // Android WebAPK ("failed to start"). Logged-in users stay on the landing
+  // page and use the "Go to Dashboard" button (see nav + hero below).
+  // (The logged-out guard for protected routes still lives in AuthGate.)
 
   // Navbar shadow + extra blur once the user scrolls.
   useEffect(() => {
@@ -244,6 +244,10 @@ export default function LandingPage() {
 
   function handleAuth() {
     router.push("/login");
+  }
+
+  function goToDashboard() {
+    router.push("/dashboard");
   }
 
   function scrollToId(e, id) {
@@ -302,22 +306,37 @@ export default function LandingPage() {
             </div>
 
             <div className="hidden items-center gap-3 md:flex">
-              <button
-                type="button"
-                onClick={handleAuth}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
-              >
-                Sign In
-              </button>
-              <motion.button
-                type="button"
-                onClick={handleAuth}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:from-rose-600 hover:to-pink-600 active:bg-rose-700 disabled:opacity-60"
-              >
-                Get Started
-              </motion.button>
+              {user && !loading ? (
+                <motion.button
+                  type="button"
+                  onClick={goToDashboard}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:from-rose-600 hover:to-pink-600 active:bg-rose-700"
+                >
+                  Go to Dashboard
+                  <ArrowRight className="h-4 w-4" />
+                </motion.button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleAuth}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    Sign In
+                  </button>
+                  <motion.button
+                    type="button"
+                    onClick={handleAuth}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:from-rose-600 hover:to-pink-600 active:bg-rose-700 disabled:opacity-60"
+                  >
+                    Get Started
+                  </motion.button>
+                </>
+              )}
             </div>
 
             <button
@@ -354,28 +373,45 @@ export default function LandingPage() {
                   ))}
                 </div>
                 <div className="mt-4 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileOpen(false);
-                      handleAuth();
-                    }}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    Sign In
-                  </button>
-                  <motion.button
-                    type="button"
-                    onClick={() => {
-                      setMobileOpen(false);
-                      handleAuth();
-                    }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:from-rose-600 hover:to-pink-600 disabled:opacity-60"
-                  >
-                    Get Started
-                  </motion.button>
+                  {user && !loading ? (
+                    <motion.button
+                      type="button"
+                      onClick={() => {
+                        setMobileOpen(false);
+                        goToDashboard();
+                      }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:from-rose-600 hover:to-pink-600 disabled:opacity-60"
+                    >
+                      Go to Dashboard
+                    </motion.button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileOpen(false);
+                          handleAuth();
+                        }}
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        Sign In
+                      </button>
+                      <motion.button
+                        type="button"
+                        onClick={() => {
+                          setMobileOpen(false);
+                          handleAuth();
+                        }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:from-rose-600 hover:to-pink-600 disabled:opacity-60"
+                      >
+                        Get Started
+                      </motion.button>
+                    </>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -447,24 +483,45 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.6, ease: EASE }}
               className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
             >
-              <motion.button
-                type="button"
-                onClick={handleAuth}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                animate={{
-                  boxShadow: [
-                    "0 8px 24px rgba(244, 63, 94, 0.3)",
-                    "0 8px 40px rgba(244, 63, 94, 0.45)",
-                    "0 8px 24px rgba(244, 63, 94, 0.3)",
-                  ],
-                }}
-                transition={{ boxShadow: { duration: 3, repeat: Infinity, ease: "easeInOut" } }}
-                className={primaryBtn}
-              >
-                Get Started Free
-                <ArrowRight className="h-5 w-5" />
-              </motion.button>
+              {user && !loading ? (
+                <motion.button
+                  type="button"
+                  onClick={goToDashboard}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  animate={{
+                    boxShadow: [
+                      "0 8px 24px rgba(244, 63, 94, 0.3)",
+                      "0 8px 40px rgba(244, 63, 94, 0.45)",
+                      "0 8px 24px rgba(244, 63, 94, 0.3)",
+                    ],
+                  }}
+                  transition={{ boxShadow: { duration: 3, repeat: Infinity, ease: "easeInOut" } }}
+                  className={primaryBtn}
+                >
+                  Go to Dashboard
+                  <ArrowRight className="h-5 w-5" />
+                </motion.button>
+              ) : (
+                <motion.button
+                  type="button"
+                  onClick={handleAuth}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  animate={{
+                    boxShadow: [
+                      "0 8px 24px rgba(244, 63, 94, 0.3)",
+                      "0 8px 40px rgba(244, 63, 94, 0.45)",
+                      "0 8px 24px rgba(244, 63, 94, 0.3)",
+                    ],
+                  }}
+                  transition={{ boxShadow: { duration: 3, repeat: Infinity, ease: "easeInOut" } }}
+                  className={primaryBtn}
+                >
+                  Get Started Free
+                  <ArrowRight className="h-5 w-5" />
+                </motion.button>
+              )}
               <motion.a
                 href="#how-it-works"
                 onClick={(e) => scrollToId(e, "how-it-works")}
@@ -842,10 +899,10 @@ export default function LandingPage() {
             </p>
             <button
               type="button"
-              onClick={handleAuth}
+              onClick={user && !loading ? goToDashboard : handleAuth}
               className="mt-10 inline-flex items-center gap-2 rounded-full bg-white px-10 py-4 text-lg font-bold text-rose-600 shadow-xl shadow-black/10 transition-all hover:scale-105 hover:shadow-2xl"
             >
-              Get Started Free
+              {user && !loading ? "Go to Dashboard" : "Get Started Free"}
               <ArrowRight className="h-5 w-5" />
             </button>
           </div>
