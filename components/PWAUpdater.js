@@ -23,13 +23,13 @@ export default function PWAUpdater() {
           (results) => {
             const removed = results.filter((r) => r.status === "fulfilled" && r.value).length;
             console.log(
-              `[CareOS] Service worker disabled for reliability (removed ${removed} of ${registrations.length} registration(s))`
+              `[KinOS] Service worker disabled for reliability (removed ${removed} of ${registrations.length} registration(s))`
             );
           }
         )
       )
       .catch((err) => {
-        console.error("[CareOS] Failed to remove service worker:", err);
+        console.error("[KinOS] Failed to remove service worker:", err);
       });
   }, []);
 

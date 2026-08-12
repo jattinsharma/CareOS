@@ -143,7 +143,7 @@ const features = [
   {
     icon: Smartphone,
     title: "Install as App",
-    desc: "Add CareOS to any home screen for quick, offline-ready access — just like a native app.",
+    desc: "Add KinOS to any home screen for quick, offline-ready access — just like a native app.",
   },
 ];
 
@@ -165,8 +165,8 @@ const proIncluded = [
 
 const faqs = [
   {
-    q: "Is CareOS really free?",
-    a: "Yes. CareOS is free for everyone during the beta, and beta users keep free access for life — no credit card required.",
+    q: "Is KinOS really free?",
+    a: "Yes. KinOS is free for everyone during the beta, and beta users keep free access for life — no credit card required.",
   },
   {
     q: "Does my elderly parent need a smartphone?",
@@ -178,7 +178,7 @@ const faqs = [
   },
   {
     q: "Is our family's health data secure?",
-    a: "Yes. CareOS uses Firebase Authentication and strict, per-family security rules. Your data stays private to your family group — only the people you invite can see it.",
+    a: "Yes. KinOS uses Firebase Authentication and strict, per-family security rules. Your data stays private to your family group — only the people you invite can see it.",
   },
   {
     q: "What happens if someone misses a medication?",
@@ -235,7 +235,7 @@ export default function LandingPage() {
       if (medium) utm.medium = medium;
       if (campaign) utm.campaign = campaign;
       if (Object.keys(utm).length > 0) {
-        localStorage.setItem("careos_utm", JSON.stringify(utm));
+        localStorage.setItem("kinos_utm", JSON.stringify(utm));
       }
     } catch {
       // localStorage unavailable — attribution is best-effort, ignore.
@@ -285,7 +285,7 @@ export default function LandingPage() {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 shadow-sm shadow-rose-200">
                 <Heart className="h-5 w-5 text-white" fill="white" />
               </div>
-              <span className="text-xl font-bold tracking-tight">CareOS</span>
+              <span className="text-xl font-bold tracking-tight">KinOS</span>
             </a>
 
             <div className="hidden items-center gap-7 md:flex">
@@ -762,7 +762,7 @@ export default function LandingPage() {
                 Frequently asked questions
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-slate-600">
-                Everything you need to know about caring with CareOS.
+                Everything you need to know about caring with KinOS.
               </p>
             </motion.div>
             <motion.div variants={stagger(0.08)} className="mx-auto mt-12 border-t border-slate-200">
@@ -866,13 +866,13 @@ export default function LandingPage() {
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 shadow-sm shadow-rose-900/40">
                     <Heart className="h-5 w-5 text-white" fill="white" />
                   </div>
-                  <span className="text-xl font-bold tracking-tight text-white">CareOS</span>
+                  <span className="text-xl font-bold tracking-tight text-white">KinOS</span>
                 </div>
                 <p className="text-sm leading-relaxed text-slate-400">
                   One shared space for the people you care for.
                 </p>
                 <p className="text-xs text-slate-400">
-                  © {new Date().getFullYear()} CareOS. All rights reserved.
+                  © {new Date().getFullYear()} KinOS. All rights reserved.
                 </p>
               </div>
               <nav aria-label="Footer">

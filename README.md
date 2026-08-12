@@ -1,4 +1,4 @@
-# CareOS — Family Care Coordination
+# KinOS — Family Care Coordination
 
 A web-first platform for families to coordinate care for aging parents, chronic conditions, or any shared health responsibility.
 
@@ -32,7 +32,7 @@ npm install
 ### 2. Configure Firebase
 
 1. Go to [console.firebase.google.com](https://console.firebase.google.com)
-2. Create a new project named "CareOS"
+2. Create a new project named "KinOS"
 3. Enable **Authentication** → Sign-in method → **Google**
 4. Create **Cloud Firestore** database → Start in **test mode**
 5. Go to **Storage** → Get started → Default bucket
@@ -107,7 +107,7 @@ Open [http://localhost:3000](http://localhost:3000)
 ## Project Structure
 
 ```
-careos/
+kinos/
 ├── app/
 │   ├── page.js              # Landing page
 │   ├── layout.js            # Root layout with auth provider

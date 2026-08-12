@@ -42,7 +42,7 @@ export default function Navbar() {
             <div className="w-9 h-9 bg-rose-500 rounded-xl flex items-center justify-center shadow-sm shadow-rose-200">
               <Heart className="w-5 h-5 text-white" fill="white" />
             </div>
-            <span className="font-bold text-xl text-slate-900 tracking-tight">CareOS</span>
+            <span className="font-bold text-xl text-slate-900 tracking-tight">KinOS</span>
           </div>
 
           <div className="hidden md:flex items-center gap-0.5">

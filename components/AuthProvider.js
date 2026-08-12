@@ -20,7 +20,7 @@ async function saveAttribution(uid) {
     let source = "direct";
     let medium = "";
     let campaign = "";
-    const raw = localStorage.getItem("careos_utm");
+    const raw = localStorage.getItem("kinos_utm");
     if (raw) {
       try {
         const utm = JSON.parse(raw);

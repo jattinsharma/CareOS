@@ -3,7 +3,7 @@
     "providers": {
       "emailPassword": true,
       "googleSignIn": {
-        "oAuthBrandDisplayName": "CareOS",
+        "oAuthBrandDisplayName": "KinOS",
         "supportEmail": "support@careos.app"
       }
     }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Share2, Smartphone, X } from "lucide-react";
 
-const DISMISS_KEY = "careos-install-dismissed-at";
+const DISMISS_KEY = "kinos-install-dismissed-at";
 const DISMISS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const IOS_DELAY_MS = 2000;
 
@@ -111,9 +111,9 @@ export default function InstallPrompt() {
             <Smartphone className="h-5 w-5 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">Install CareOS</p>
+            <p className="text-sm font-semibold text-slate-900">Install KinOS</p>
             <p className="mt-0.5 text-xs text-slate-500">
-              Add CareOS to your home screen for quick, offline-ready access.
+              Add KinOS to your home screen for quick, offline-ready access.
             </p>
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function InstallPrompt() {
                 </li>
                 <li>
                   <span className="font-semibold text-slate-800">3.</span> Tap Add,
-                  then launch CareOS from your Home Screen.
+                  then launch KinOS from your Home Screen.
                 </li>
               </ol>
             )}

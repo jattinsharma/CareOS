@@ -1,5 +1,5 @@
 /**
- * End-to-end verification of the CareOS Firebase setup:
+ * End-to-end verification of the KinOS Firebase setup:
  *  - Email/password signup (Firebase Auth)
  *  - Firestore security rules (group membership, invite-code lookup, validation)
  *  - Cleans up all test users and documents afterwards.
@@ -93,8 +93,8 @@ let userA, userB, groupId, medId;
 
 try {
   // ---------- 1. Email/password signup ----------
-  userA = await signUp(`test.a.${unique}@careos.test`, "TestCareos2026!");
-  userB = await signUp(`test.b.${unique}@careos.test`, "TestCareos2026!");
+  userA = await signUp(`test.a.${unique}@kinos.test`, "TestKinos2026!");
+  userB = await signUp(`test.b.${unique}@kinos.test`, "TestKinos2026!");
   check("Email/password signup works (2 users created)", !!userA.idToken && !!userB.idToken, `uids ${userA.localId.slice(0, 6)}… / ${userB.localId.slice(0, 6)}…`);
 
   // ---------- 2. Create family group as user A ----------

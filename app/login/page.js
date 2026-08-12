@@ -96,7 +96,7 @@ export default function LoginPage() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20">
             <Heart className="h-5 w-5 text-white" fill="white" />
           </div>
-          <span className="text-xl font-bold tracking-tight">CareOS</span>
+          <span className="text-xl font-bold tracking-tight">KinOS</span>
         </div>
         <h1 className="text-4xl font-bold leading-tight tracking-tight mb-6">
           Caring for family,<br />simpler together.

@@ -1,5 +1,5 @@
 /**
- * Generates the CareOS PWA icons in public/icons/.
+ * Generates the KinOS PWA icons in public/icons/.
  *
  * Pure Node.js — no dependencies. Builds PNGs manually (zlib + CRC32) and
  * draws a rose-500 (#f43f5e) background with a white heart.
@@ -104,7 +104,7 @@ function drawIcon(size, factor, filename) {
 /* ---------------- Main ---------------- */
 
 mkdirSync(OUT_DIR, { recursive: true });
-console.log("Generating CareOS PWA icons...");
+console.log("Generating KinOS PWA icons...");
 
 // Regular icons: heart fills ~65% of the canvas.
 drawIcon(192, 3.6, "icon-192x192.png");

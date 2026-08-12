@@ -56,10 +56,10 @@ export default function Dashboard() {
     setNotifReady(true);
     if (typeof window === "undefined" || typeof Notification === "undefined") return;
     try {
-      const stored = localStorage.getItem("careos_notifications");
+      const stored = localStorage.getItem("kinos_notifications");
       if (Notification.permission === "granted") {
         setNotifEnabled(true);
-        localStorage.setItem("careos_notifications", "granted");
+        localStorage.setItem("kinos_notifications", "granted");
       } else if (Notification.permission === "denied" || stored === "denied") {
         setNotifDenied(true);
       }
@@ -108,7 +108,7 @@ export default function Dashboard() {
           Notification.permission === "granted"
         ) {
           try {
-            const n = new Notification("CareOS", {
+            const n = new Notification("KinOS", {
               body: `Time to take ${m.name}`,
             });
             n.onclick = () => {
@@ -190,7 +190,7 @@ export default function Dashboard() {
       if (permission === "granted") {
         setNotifEnabled(true);
         try {
-          localStorage.setItem("careos_notifications", "granted");
+          localStorage.setItem("kinos_notifications", "granted");
         } catch {
           // ignore
         }
@@ -198,7 +198,7 @@ export default function Dashboard() {
       } else {
         setNotifDenied(true);
         try {
-          localStorage.setItem("careos_notifications", "denied");
+          localStorage.setItem("kinos_notifications", "denied");
         } catch {
           // ignore
         }
@@ -384,7 +384,7 @@ export default function Dashboard() {
             <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-6 text-white">
               <h2 className="text-xl font-bold mb-2">Beta Access</h2>
               <p className="text-rose-100 text-sm leading-relaxed mb-4">
-                CareOS is completely free during beta. Help us build the best care coordination tool and get lifetime free access.
+                KinOS is completely free during beta. Help us build the best care coordination tool and get lifetime free access.
               </p>
               <button className="bg-white text-rose-600 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-rose-50 transition-colors w-full">
                 Share Feedback

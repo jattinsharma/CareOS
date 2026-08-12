@@ -8,7 +8,7 @@ import { Toaster } from "react-hot-toast";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "CareOS — Family Care Coordination",
+  title: "KinOS — Family Care Coordination",
   description: "One shared space for medications, appointments, documents, and communication. Built for families caring for aging parents or managing chronic conditions.",
   manifest: "/manifest.json",
   icons: {
@@ -18,7 +18,7 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "CareOS",
+    title: "KinOS",
   },
 };
 
