@@ -1,31 +1,16 @@
 /* KinOS Service Worker — network-first caching strategy. */
-// v1.0.2 — on every deploy bump this comment AND CACHE_NAME in lockstep:
-// the comment makes browsers byte-diff and fetch the new worker; the cache
-// name lets the activate handler prune the previous version's cache.
+// v2.0.0 — SAFE version: pages are ALWAYS fetched from the network first, so a
+// deploy can never serve a stale HTML shell (the crash that disabled v1).
+// Only content-hashed /_next/static assets are served from cache first.
+// No HTML precaching at install time — caches are filled lazily on demand.
+// Bump CACHE_NAME on every functional change.
 
-const CACHE_NAME = "kinos-shell-v3";
+const CACHE_NAME = "kinos-shell-v4";
 
-// App shell pages to precache at install time.
-const SHELL_URLS = [
-  "/",
-  "/dashboard",
-  "/family",
-  "/medications",
-  "/calendar",
-  "/vault",
-];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) =>
-        // Cache each shell URL individually so one failure can't abort install;
-        // any gaps are filled lazily by the fetch handler on first visit.
-        Promise.allSettled(SHELL_URLS.map((url) => cache.add(url)))
-      )
-      .then(() => self.skipWaiting())
-  );
+self.addEventListener("install", () => {
+  // Intentionally precache NOTHING. The old worker cached shell HTML at
+  // install, which survived deploys and crashed the app on stale chunks.
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -89,11 +74,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Everything else: network-first, with cache fallback when offline.
+  // Everything else (HTML pages, manifest, icons): network-first so the
+  // latest deploy always wins, with the cache as an offline fallback.
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Cache successful same-origin responses (shell HTML + other assets).
+        // Cache successful same-origin responses for offline use.
         if (response.ok && url.origin === self.location.origin) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
