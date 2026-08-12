@@ -56,7 +56,9 @@ export default function RolePrompt() {
           });
           return;
         }
-        // Only invite joiners without a role are prompted.
+        // Only invite joiners without a role are prompted — and only if they
+        // haven't dismissed the modal via "Skip for now".
+        if (hasSkippedRolePrompt()) return;
         setGroup(g);
         setOpen(true);
       } catch {
@@ -77,8 +79,29 @@ export default function RolePrompt() {
   async function selfHealCreatorRole(group, user) {
     const name = user.displayName || user.email?.split("@")[0] || "You";
     await updateDoc(doc(db, "familyGroups", group.id), {
-      [`memberRoles.${user.uid}`]: { role: "admin", name },
+      [`memberRoles.${user.uid}.role`]: "admin",
+      [`memberRoles.${user.uid}.name`]: name,
     });
+  }
+
+  // "Skip for now" — dismisses the prompt without picking a role, and stops
+  // it from re-opening (per device). The creator's silent self-heal still
+  // runs regardless, so the record stays complete.
+  function handleSkip() {
+    try {
+      localStorage.setItem("kinos_role_skipped", "true");
+    } catch {
+      // localStorage unavailable — the in-memory dismissal still stands.
+    }
+    setOpen(false);
+  }
+
+  function hasSkippedRolePrompt() {
+    try {
+      return localStorage.getItem("kinos_role_skipped") === "true";
+    } catch {
+      return false;
+    }
   }
 
   if (loading || pending || !open || !group) return null;
@@ -87,10 +110,20 @@ export default function RolePrompt() {
     setSaving(true);
     try {
       const name = user.displayName || user.email?.split("@")[0] || "Member";
-      // Field-path write: atomic per key, never clobbers other members' roles.
+      // Field-path write: atomic per field, never clobbers other members'
+      // roles, and merges into an existing entry instead of replacing it.
       await updateDoc(doc(db, "familyGroups", group.id), {
-        [`memberRoles.${user.uid}`]: { role, name },
+        [`memberRoles.${user.uid}.role`]: role,
+        [`memberRoles.${user.uid}.name`]: name,
       });
+      // A saved role supersedes any previous "skip" — the memberRoles entry
+      // now gates the prompt, so clear the flag so it can't suppress a future
+      // prompt for a different family or a cleared entry.
+      try {
+        localStorage.removeItem("kinos_role_skipped");
+      } catch {
+        // Ignore — localStorage unavailable.
+      }
       setOpen(false);
       toast.success("Thanks! Your role is saved.");
     } catch {
@@ -109,6 +142,7 @@ export default function RolePrompt() {
       closable={false}
       submitting={saving}
       onSelect={handleSelect}
+      onSkip={handleSkip}
     />
   );
 }

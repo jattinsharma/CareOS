@@ -16,6 +16,9 @@ import { X, Users } from "lucide-react";
  *  - ctaLabel:    submit button text
  *  - closable:    allow dismissing (create/join/migration are not)
  *  - submitting:  disable the button while the Firestore write is in flight
+ *  - onSkip:      when provided, renders a "Skip for now" ghost button next
+ *                 to the CTA (used by the migration prompt so it can be
+ *                 dismissed without picking a role)
  *  - onClose / onSelect(role) — role is the enum id or the custom "other" text
  */
 export default function RolePickerModal({
@@ -27,6 +30,7 @@ export default function RolePickerModal({
   submitting = false,
   onClose,
   onSelect,
+  onSkip,
 }) {
   const [selected, setSelected] = useState(null);
   const [custom, setCustom] = useState("");
@@ -131,13 +135,28 @@ export default function RolePickerModal({
 
         {error && <p className="mt-3 text-sm font-medium text-red-600">{error}</p>}
 
-        <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="mt-5 w-full bg-rose-500 hover:bg-rose-600 active:bg-rose-700 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors"
-        >
-          {submitting ? "Saving…" : ctaLabel}
-        </button>
+        <div className="mt-5 flex items-center gap-3">
+          {onSkip && (
+            <button
+              type="button"
+              onClick={onSkip}
+              disabled={submitting}
+              className="flex-1 border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50 disabled:opacity-60 py-3 rounded-xl font-semibold transition-colors"
+            >
+              Skip for now
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            className={`${
+              onSkip ? "flex-1" : "w-full"
+            } bg-rose-500 hover:bg-rose-600 active:bg-rose-700 disabled:opacity-60 text-white py-3 rounded-xl font-semibold transition-colors`}
+          >
+            {submitting ? "Saving…" : ctaLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

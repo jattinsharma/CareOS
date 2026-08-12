@@ -117,22 +117,26 @@ service cloud.firestore {
       return m is map && m.size() >= 1 && m.size() <= 50;
     }
 
-    // True only if the requester's uid is the sole added/changed key between
-    // the old and new memberRoles maps (both args are already established as
-    // maps by the caller's is-map guards).
+    // True only if the requester's uid is the sole added/removed/changed key
+    // between the old and new memberRoles maps (both args are already
+    // established as maps by the caller's is-map guards). A member may add,
+    // change, or remove their OWN entry freely; touching any other member's
+    // entry makes the affected-key set exceed their own uid and is denied.
     function onlyOwnRoleChanged(newRoles, oldRoles, uid) {
       return newRoles.diff(oldRoles).affectedKeys().hasOnly([uid]);
     }
 
-    // memberRoles may change, but only the requester's OWN entry may be added
-    // or changed. When the old doc has no memberRoles (legacy group), the new
+    // memberRoles may change, but only the requester's OWN entry may be
+    // added, changed, or removed. (No hasAll comparison: Map.hasAll compares
+    // key-value pairs, which would wrongly deny changing one's own entry's
+    // value — the diff check alone guarantees no other member's entry is
+    // touched.) When the old doc has no memberRoles (legacy group), the new
     // map is either absent or contains exactly the requester's own key.
     function isValidMemberRolesChange(d) {
       let hadRoles = 'memberRoles' in resource.data;
       return hadRoles
         ? (d.memberRoles is map
            && resource.data.memberRoles is map
-           && d.memberRoles.hasAll(resource.data.memberRoles)
            && onlyOwnRoleChanged(d.memberRoles, resource.data.memberRoles,
                                  request.auth.uid))
         : (!('memberRoles' in d)
