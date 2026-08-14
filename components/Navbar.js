@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import ProfileDropdown from "@/components/ProfileDropdown";
+import NotificationPrompt from "@/components/NotificationPrompt";
 
 export default function Navbar() {
   const { user } = useAuth();
@@ -111,6 +112,9 @@ export default function Navbar() {
           })}
         </div>
       )}
+
+      {/* Polite FCM permission request (renders nothing until applicable) */}
+      <NotificationPrompt />
     </nav>
   );
 }

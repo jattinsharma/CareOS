@@ -68,7 +68,21 @@ service cloud.firestore {
     //   displayName:     string (optional, 1-100, mirrors Firebase Auth)
     //   photoURL:        string (optional, https URL, mirrors Firebase Auth)
     //   phoneNumber:     string (optional, 0-30, for future SMS refill alerts)
-    //   defaultFamilyId: string (optional, 1-50, preferred family group id)
+    //   defaultFamilyId:     string (optional, 1-50, preferred family group id)
+    //   fcmToken:            string (optional, FCM web push registration token,
+    //                        written by the client when notifications are enabled)
+    //   notificationsEnabled: boolean (optional, default true)
+    //   timezone:            string (optional, IANA name e.g. "Asia/Kolkata" —
+    //                        lets the reminder function fire at the LOCAL dose time)
+    //
+    // notifications/{notifId}   (push-notification audit log — ADMIN ONLY)
+    //   userId:         string (uid of the patient the medication is for)
+    //   medicationId:   string (id of the medication)
+    //   title:          string (e.g. "Time for your Zincate")
+    //   body:           string (e.g. "1 tablet • Daily at 10:30 PM")
+    //   date:           string ('YYYY-MM-DD', the local dose date)
+    //   sentAt:         timestamp (serverTimestamp)
+    //   read:           boolean (default false)
     //
     // messages/{messageId}
     //   familyGroupId:  string (required, IMMUTABLE)
@@ -76,6 +90,17 @@ service cloud.firestore {
     //   senderName:     string (optional, <= 100)
     //   text:           string (1-1000, required)
     //   timestamp:      string (ISO-8601, required, IMMUTABLE)
+    //
+    // feedback/{feedbackId}   (beta feedback — client write-only)
+    //   userId:         string (uid of the submitting user, required)
+    //   userName:       string (Auth displayName at submit time, optional)
+    //   userEmail:      string (Auth email at submit time, optional)
+    //   rating:         number (1-5, required)
+    //   likes:          string (1-2000, required)
+    //   dislikes:       string (0-2000, optional)
+    //   improvements:   string (1-2000, required)
+    //   page:           string (path the user was on, optional, <= 100)
+    //   createdAt:      timestamp (serverTimestamp, required)
     // ================================================================
 
     function isAuthenticated() {
@@ -339,7 +364,8 @@ service cloud.firestore {
       let d = request.resource.data;
       return d.keys().hasOnly(['source', 'medium', 'campaign', 'createdAt',
                                'displayName', 'photoURL', 'phoneNumber',
-                               'defaultFamilyId'])
+                               'defaultFamilyId', 'fcmToken',
+                               'notificationsEnabled', 'timezone'])
         && isString(d.source, 1, 50)
         && (!('medium' in d) || isString(d.medium, 0, 100))
         && (!('campaign' in d) || isString(d.campaign, 0, 100))
@@ -348,7 +374,10 @@ service cloud.firestore {
         && (!('photoURL' in d)
             || (isString(d.photoURL, 0, 500) && d.photoURL.matches('^https?://.*')))
         && (!('phoneNumber' in d) || isString(d.phoneNumber, 0, 30))
-        && (!('defaultFamilyId' in d) || isString(d.defaultFamilyId, 1, 50));
+        && (!('defaultFamilyId' in d) || isString(d.defaultFamilyId, 1, 50))
+        && (!('fcmToken' in d) || isString(d.fcmToken, 1, 500))
+        && (!('notificationsEnabled' in d) || d.notificationsEnabled is bool)
+        && (!('timezone' in d) || isString(d.timezone, 1, 64));
     }
 
     // Each user may only read/write their own profile document.
@@ -378,6 +407,48 @@ service cloud.firestore {
       allow delete: if isAuthenticated()
         && resource.data.senderId == request.auth.uid
         && isMember(resource.data.familyGroupId);
+    }
+
+    // ---------- feedback ----------
+
+    // Users may only submit feedback for themselves; identity fields must
+    // match their auth record, rating must be a number 1-5, and the required
+    // answer fields must be non-empty strings.
+    function isValidFeedbackCreate() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['userId', 'userName', 'userEmail', 'rating',
+                               'likes', 'dislikes', 'improvements', 'page',
+                               'createdAt'])
+        && d.userId == request.auth.uid
+        && isString(d.userName, 0, 100)
+        && isString(d.userEmail, 0, 200)
+        && d.rating is number && d.rating >= 1 && d.rating <= 5
+        && isString(d.likes, 1, 2000)
+        && (!('dislikes' in d) || isString(d.dislikes, 0, 2000))
+        && isString(d.improvements, 1, 2000)
+        && (!('page' in d) || isString(d.page, 0, 100))
+        && d.createdAt is timestamp;
+    }
+
+    match /feedback/{feedbackId} {
+      // No client reads — admins access feedback via the Firebase console or
+      // the Admin SDK (rules don't apply to Admin SDK requests).
+      allow read: if false;
+      // Any authenticated user may submit feedback (no family membership
+      // required — feedback is about the product, not a family group).
+      allow create: if isAuthenticated() && isValidFeedbackCreate();
+      // Feedback docs are immutable from clients.
+      allow update, delete: if false;
+    }
+
+    // ---------- notifications ----------
+
+    // Push-notification audit log written by the scheduled reminder Cloud
+    // Function (Admin SDK — rules never apply to it). Clients have no reason
+    // to read or write it; admins use the Firebase console / Admin SDK.
+    match /notifications/{notifId} {
+      allow read: if false;
+      allow write: if false;
     }
   }
 }

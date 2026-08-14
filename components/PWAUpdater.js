@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-// Registers the KinOS service worker (public/sw.js).
+// Registers the KinOS service worker (/firebase-messaging-sw.js).
 //
 // Why this exists: installed Android WebAPKs boot through a standalone shell
 // that expects a valid service worker at the registered scope. When sw.js
@@ -10,8 +10,14 @@ import { useEffect } from "react";
 // stale registration on devices, so launching the installed app failed with
 // "KinOS failed to start" while the browser tab worked fine.
 //
-// The worker itself is network-first for pages, so a fresh deploy can never
-// serve a stale shell — no offline-cache crash risk.
+// The worker is served by an App Router route handler and combines the PWA
+// caching logic (network-first for pages, so a fresh deploy can never serve a
+// stale shell) with Firebase Cloud Messaging background handling — one
+// root-scope registration, because a second worker at the same scope would
+// silently replace the first.
+//
+// The old public/sw.js is superseded by this route and is no longer
+// registered (left on disk only as an inert fallback).
 export default function PWAUpdater() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -20,7 +26,9 @@ export default function PWAUpdater() {
 
     async function register() {
       try {
-        const registration = await navigator.serviceWorker.register("/sw.js");
+        const registration = await navigator.serviceWorker.register(
+          "/firebase-messaging-sw.js"
+        );
         if (disposed) return;
 
         // If a newer worker is waiting to activate (new deploy landed), tell

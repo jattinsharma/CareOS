@@ -22,9 +22,14 @@ import {
   updatePassword,
   updateProfile,
 } from "firebase/auth";
-import { Camera, Loader2, Lock, Mail, Phone, Users } from "lucide-react";
+import { Bell, Camera, Loader2, Lock, Mail, Phone, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { getInitials } from "@/components/ProfileDropdown";
+import {
+  disableNotifications,
+  enableNotifications,
+  isMessagingSupported,
+} from "@/lib/firebaseMessaging";
 
 function friendlyAuthError(err) {
   const code = err?.code || "";
@@ -64,6 +69,11 @@ export default function ProfileSettings() {
 
   const [families, setFamilies] = useState([]);
   const [defaultFamilyId, setDefaultFamilyId] = useState("");
+
+  // Push-notification state (read from /users/{uid}, written by the client
+  // messaging helpers).
+  const [notifSupported, setNotifSupported] = useState(false);
+  const [notifBusy, setNotifBusy] = useState(false);
 
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -107,7 +117,49 @@ export default function ProfileSettings() {
     } catch {
       // Non-fatal — the default-family dropdown just stays empty.
     }
+    try {
+      setNotifSupported(await isMessagingSupported());
+    } catch {
+      setNotifSupported(false);
+    }
     setLoading(false);
+  }
+
+  // A device is considered "on" when it has a registered token (the flag
+  // defaults to true once a token exists).
+  const notificationsEnabled =
+    !!profile.fcmToken && profile.notificationsEnabled !== false;
+
+  async function handleEnableNotifications() {
+    setNotifBusy(true);
+    try {
+      const res = await enableNotifications(user);
+      if (res.permission === "granted") {
+        setProfile((p) => ({ ...p, notificationsEnabled: true }));
+        toast.success("Medication reminders enabled for this device");
+      } else {
+        toast.error(
+          "Notifications are blocked in your browser. Unblock KinOS in your site settings, then try again."
+        );
+      }
+    } catch (err) {
+      toast.error(err?.message || "Couldn't enable notifications");
+    } finally {
+      setNotifBusy(false);
+    }
+  }
+
+  async function handleDisableNotifications() {
+    setNotifBusy(true);
+    try {
+      await disableNotifications(user);
+      setProfile((p) => ({ ...p, fcmToken: undefined, notificationsEnabled: false }));
+      toast.success("Medication reminders turned off");
+    } catch {
+      toast.error("Couldn't turn off notifications");
+    } finally {
+      setNotifBusy(false);
+    }
   }
 
   // Merge a patch into /users/{uid}. Guards the fields the rules require when
@@ -503,6 +555,56 @@ export default function ProfileSettings() {
             You&apos;re not in any family groups yet — create or join one from the
             Family page.
           </p>
+        )}
+      </section>
+
+      {/* ---------- Medication reminders ---------- */}
+      <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+          <Bell className="w-4 h-4 text-rose-500" />
+          Medication reminders
+        </h2>
+        <p className="text-sm text-slate-500 mt-0.5 mb-4">
+          Push notifications when it&apos;s time for a dose — even when KinOS is
+          closed.
+        </p>
+
+        {!notifSupported ? (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+            Push notifications aren&apos;t supported in this browser yet — they work
+            on Android Chrome and desktop Chrome/Edge/Firefox, but not iOS
+            Safari.
+          </p>
+        ) : notificationsEnabled ? (
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-slate-600">
+              Reminders are{" "}
+              <span className="font-semibold text-emerald-600">on</span> for this
+              device.
+            </p>
+            <button
+              onClick={handleDisableNotifications}
+              disabled={notifBusy}
+              className="flex-shrink-0 border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-60 px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors"
+            >
+              {notifBusy ? "Turning off…" : "Turn off"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-slate-600">
+              Reminders are{" "}
+              <span className="font-semibold text-slate-400">off</span>.
+            </p>
+            <button
+              onClick={handleEnableNotifications}
+              disabled={notifBusy}
+              className="flex-shrink-0 inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 disabled:opacity-60 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors"
+            >
+              <Bell className="w-4 h-4" />
+              {notifBusy ? "Enabling…" : "Enable reminders"}
+            </button>
+          </div>
         )}
       </section>
 
