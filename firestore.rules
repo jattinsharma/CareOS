@@ -61,10 +61,14 @@ service cloud.firestore {
     //   uploadedAt:     string (ISO-8601, required, IMMUTABLE)
     //
     // users/{uid}
-    //   source:    string (required, attribution source, e.g. "direct", "google")
-    //   medium:    string (optional, e.g. "cpc", "social")
-    //   campaign:  string (optional, e.g. "spring-2026")
-    //   createdAt: string (ISO-8601, required)
+    //   source:          string (required, attribution source, e.g. "direct", "google")
+    //   medium:          string (optional, e.g. "cpc", "social")
+    //   campaign:        string (optional, e.g. "spring-2026")
+    //   createdAt:       string (ISO-8601, required)
+    //   displayName:     string (optional, 1-100, mirrors Firebase Auth)
+    //   photoURL:        string (optional, https URL, mirrors Firebase Auth)
+    //   phoneNumber:     string (optional, 0-30, for future SMS refill alerts)
+    //   defaultFamilyId: string (optional, 1-50, preferred family group id)
     //
     // messages/{messageId}
     //   familyGroupId:  string (required, IMMUTABLE)
@@ -331,22 +335,29 @@ service cloud.firestore {
 
     // ---------- users ----------
 
-    function isValidUserAttribution() {
+    function isValidUserProfile() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['source', 'medium', 'campaign', 'createdAt'])
+      return d.keys().hasOnly(['source', 'medium', 'campaign', 'createdAt',
+                               'displayName', 'photoURL', 'phoneNumber',
+                               'defaultFamilyId'])
         && isString(d.source, 1, 50)
         && (!('medium' in d) || isString(d.medium, 0, 100))
         && (!('campaign' in d) || isString(d.campaign, 0, 100))
-        && isValidDateString(d.createdAt);
+        && isValidDateString(d.createdAt)
+        && (!('displayName' in d) || isString(d.displayName, 1, 100))
+        && (!('photoURL' in d)
+            || (isString(d.photoURL, 0, 500) && d.photoURL.matches('^https?://.*')))
+        && (!('phoneNumber' in d) || isString(d.phoneNumber, 0, 30))
+        && (!('defaultFamilyId' in d) || isString(d.defaultFamilyId, 1, 50));
     }
 
     // Each user may only read/write their own profile document.
     match /users/{uid} {
       allow get: if isAuthenticated() && request.auth.uid == uid;
       allow create: if isAuthenticated() && request.auth.uid == uid
-        && isValidUserAttribution();
+        && isValidUserProfile();
       allow update: if isAuthenticated() && request.auth.uid == uid
-        && isValidUserAttribution();
+        && isValidUserProfile();
     }
 
     // ---------- messages ----------

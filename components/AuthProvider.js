@@ -82,9 +82,26 @@ export function AuthProvider({ children }) {
     await signOut(auth);
   };
 
+  // Re-read the current Firebase user (e.g. after updateProfile) so the UI
+  // (navbar avatar, name) reflects the latest auth state immediately.
+  const refreshUser = async () => {
+    const current = auth.currentUser;
+    if (!current) return;
+    await current.reload();
+    setUser({ ...current });
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, loginWithGoogle, loginWithEmail, signupWithEmail, logout, loading }}
+      value={{
+        user,
+        loginWithGoogle,
+        loginWithEmail,
+        signupWithEmail,
+        logout,
+        loading,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

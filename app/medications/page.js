@@ -15,6 +15,8 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
+import CaregiverBanner from "@/components/CaregiverBanner";
+import { getInitials } from "@/components/ProfileDropdown";
 import {
   Pill,
   Plus,
@@ -69,6 +71,7 @@ export default function MedicationsPage() {
   const [editingMed, setEditingMed] = useState(null); // med id being edited, null = add mode
   const [selectedDay, setSelectedDay] = useState(null); // week-history day key
   const [ownerFilter, setOwnerFilter] = useState("all"); // med owner uid filter
+  const [bannerDismissed, setBannerDismissed] = useState(false); // session-only
 
   useEffect(() => {
     if (!user) return;
@@ -270,6 +273,16 @@ export default function MedicationsPage() {
       ? medications
       : medications.filter((m) => (m.ownerUid || m.createdBy) === ownerFilter);
 
+  // Caregiver context: when the owner filter names a specific member other
+  // than the logged-in user, we're viewing THAT member's medications.
+  const patientId = ownerFilter !== "all" ? ownerFilter : null;
+  const isViewingSelf = !!patientId && patientId === user?.uid;
+  const isCaregiverView = !!patientId && !isViewingSelf;
+  const patientName = patientId
+    ? getMemberName(familyGroup, patientId, user) || "family member"
+    : "";
+  const viewerName = user?.displayName || user?.email?.split("@")[0] || "you";
+
   // Aggregate per-day status for the "This Week" view.
   function daySummary(dayKey) {
     const required = medications.filter((m) => isScheduledOn(m, dayKey));
@@ -290,11 +303,31 @@ export default function MedicationsPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
+
+      {/* Caregiver context banner — only when viewing another member's meds */}
+      {isCaregiverView && !bannerDismissed && (
+        <CaregiverBanner
+          patientName={patientName}
+          viewerName={viewerName}
+          onDismiss={() => setBannerDismissed(true)}
+        />
+      )}
+
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Medications</h1>
-            <p className="text-slate-500 mt-1">Track doses and never miss a medication.</p>
+            <h1 className="text-3xl font-bold text-slate-900">
+              {isViewingSelf
+                ? "My Medications"
+                : patientId
+                ? `${patientName}'s Medications`
+                : "Medications"}
+            </h1>
+            <p className="text-slate-500 mt-1">
+              {patientId
+                ? `Tracking doses for ${patientName}.`
+                : "Track doses and never miss a medication."}
+            </p>
           </div>
           <button
             onClick={() => {
@@ -455,11 +488,9 @@ export default function MedicationsPage() {
               const lifetimeMisses = medLifetimeMisses(med);
               const isExpanded = expandedMed === med.id;
               const ownerUid = med.ownerUid || med.createdBy;
-              const ownerLabel = getOwnerLabel(
-                familyGroup,
-                ownerUid,
-                getMemberName(familyGroup, ownerUid, user)
-              );
+              const memberName =
+                getMemberName(familyGroup, ownerUid, user) || "Family member";
+              const ownerLabel = getOwnerLabel(familyGroup, ownerUid, memberName);
               const ownerEmoji = getRoleEmoji(getMemberEntry(familyGroup, ownerUid)?.role);
 
               const cardBorder = isTaken
@@ -533,14 +564,6 @@ export default function MedicationsPage() {
                                 Due at {formatTime12h(med.times)}
                               </span>
                             )}
-                            {ownerLabel && (
-                              <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-50 text-slate-500 text-xs font-medium rounded-full border border-slate-200"
-                                title={`For ${getMemberName(familyGroup, ownerUid, user)}`}
-                              >
-                                {ownerEmoji} {ownerLabel}
-                              </span>
-                            )}
                           </div>
                           <p className="text-slate-600 mt-0.5">{med.dosage}</p>
                           <div className="flex items-center gap-4 mt-2 text-sm text-slate-500 flex-wrap">
@@ -578,6 +601,20 @@ export default function MedicationsPage() {
                                 📊 {hStats.rate}% adherence
                               </span>
                             )}
+                          </div>
+
+                          {/* Patient — whose meds this is, clearly labelled */}
+                          <div className="mt-2.5">
+                            <span
+                              className="inline-flex items-center gap-2 px-2.5 py-1 bg-rose-50 text-rose-700 text-xs font-medium rounded-full border border-rose-100"
+                              title={`Medication is for ${memberName}`}
+                            >
+                              <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                                {getInitials(memberName, user?.email)}
+                              </span>
+                              <span className="font-semibold">Patient</span>
+                              <span className="text-rose-800">{memberName}</span>
+                            </span>
                           </div>
                         </div>
                       </div>

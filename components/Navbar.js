@@ -10,13 +10,13 @@ import {
   Pill,
   CalendarDays,
   FolderOpen,
-  LogOut,
   Menu,
   X,
 } from "lucide-react";
+import ProfileDropdown from "@/components/ProfileDropdown";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -65,25 +65,24 @@ export default function Navbar() {
               );
             })}
             <div className="w-px h-6 bg-slate-200 mx-2" />
-            <button
-              onClick={logout}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            {/* Avatar + profile dropdown (replaces the plain logout icon) */}
+            <ProfileDropdown />
           </div>
 
-          <button
-            className="md:hidden p-2 hover:bg-slate-50 rounded-lg transition-colors"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            {mobileOpen ? (
-              <X className="w-5 h-5 text-slate-700" />
-            ) : (
-              <Menu className="w-5 h-5 text-slate-700" />
-            )}
-          </button>
+          {/* Mobile: avatar (opens the bottom sheet) + hamburger */}
+          <div className="flex items-center gap-1 md:hidden">
+            <ProfileDropdown />
+            <button
+              className="p-2 hover:bg-slate-50 rounded-lg transition-colors"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? (
+                <X className="w-5 h-5 text-slate-700" />
+              ) : (
+                <Menu className="w-5 h-5 text-slate-700" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -110,16 +109,6 @@ export default function Navbar() {
               </button>
             );
           })}
-          <button
-            onClick={() => {
-              logout();
-              setMobileOpen(false);
-            }}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
         </div>
       )}
     </nav>
