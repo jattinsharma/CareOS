@@ -16,6 +16,7 @@ import {
   ChevronRight,
   FolderOpen,
   Settings,
+  Bell,
   LogOut,
 } from "lucide-react";
 import { formatTime12h } from "@/lib/medUtils";
@@ -177,6 +178,13 @@ export default function MobileDashboard({
             >
               <FolderOpen className="w-4 h-4 text-slate-500" />
               Vault
+            </button>
+            <button
+              onClick={() => go("/notifications")}
+              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Bell className="w-4 h-4 text-slate-500" />
+              Notifications
             </button>
             <button
               onClick={() => go("/settings")}

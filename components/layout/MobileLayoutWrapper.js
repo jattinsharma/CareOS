@@ -12,6 +12,7 @@ const APP_ROUTES = new Set([
   "/calendar",
   "/family",
   "/vault",
+  "/notifications",
 ]);
 
 export default function MobileLayoutWrapper() {

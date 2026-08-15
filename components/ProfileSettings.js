@@ -559,6 +559,9 @@ export default function ProfileSettings() {
       </section>
 
       {/* ---------- Medication reminders ---------- */}
+      {/* Push isn't supported here (iOS Safari etc.) — hide the whole section
+          instead of showing a broken-looking warning + toggle. */}
+      {notifSupported && (
       <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
           <Bell className="w-4 h-4 text-rose-500" />
@@ -569,13 +572,7 @@ export default function ProfileSettings() {
           closed.
         </p>
 
-        {!notifSupported ? (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-            Push notifications aren&apos;t supported in this browser yet — they work
-            on Android Chrome and desktop Chrome/Edge/Firefox, but not iOS
-            Safari.
-          </p>
-        ) : notificationsEnabled ? (
+        {notificationsEnabled ? (
           <div className="flex items-center justify-between gap-4">
             <p className="text-sm text-slate-600">
               Reminders are{" "}
@@ -607,6 +604,7 @@ export default function ProfileSettings() {
           </div>
         )}
       </section>
+      )}
 
       {/* ---------- Re-auth modal (email / password changes) ---------- */}
       {reauth && (

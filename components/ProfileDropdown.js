@@ -4,7 +4,6 @@ import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Bell, ChevronDown, LogOut, Settings, Users, X } from "lucide-react";
-import toast from "react-hot-toast";
 
 // "JS" from "Jattin Sharma" — the fallback avatar initials, reused by the
 // medications page Patient chip.
@@ -62,11 +61,6 @@ export default function ProfileDropdown() {
     logout();
   }
 
-  function handleNotifications() {
-    setOpen(false);
-    toast("Notifications are coming soon", { icon: "🔔" });
-  }
-
   // Shared by the desktop dropdown and the mobile bottom sheet.
   function menuContent() {
     return (
@@ -90,7 +84,7 @@ export default function ProfileDropdown() {
             label="Manage Families"
             onClick={() => navigate("/family")}
           />
-          <MenuItem icon={Bell} label="Notifications" onClick={handleNotifications} />
+          <MenuItem icon={Bell} label="Notifications" onClick={() => navigate("/notifications")} />
         </div>
         <div className="h-px bg-slate-100 mx-4" />
         <div className="py-1.5">

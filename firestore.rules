@@ -75,13 +75,16 @@ service cloud.firestore {
     //   timezone:            string (optional, IANA name e.g. "Asia/Kolkata" —
     //                        lets the reminder function fire at the LOCAL dose time)
     //
-    // notifications/{notifId}   (push-notification audit log — ADMIN ONLY)
-    //   userId:         string (uid of the patient the medication is for)
-    //   medicationId:   string (id of the medication)
+    // notifications/{notifId}   (per-user inbox)
+    //   userId:         string (uid of the notification's owner)
+    //   medicationId:   string (id of the medication — Cloud Function shape)
     //   title:          string (e.g. "Time for your Zincate")
     //   body:           string (e.g. "1 tablet • Daily at 10:30 PM")
     //   date:           string ('YYYY-MM-DD', the local dose date)
     //   sentAt:         timestamp (serverTimestamp)
+    //   message:        string (client-created shape)
+    //   type:           string in ['med','event','general'] (client-created)
+    //   createdAt:      timestamp (serverTimestamp, client-created)
     //   read:           boolean (default false)
     //
     // messages/{messageId}
@@ -443,12 +446,36 @@ service cloud.firestore {
 
     // ---------- notifications ----------
 
-    // Push-notification audit log written by the scheduled reminder Cloud
-    // Function (Admin SDK — rules never apply to it). Clients have no reason
-    // to read or write it; admins use the Firebase console / Admin SDK.
+    // Per-user notification inbox. Docs are written by the scheduled reminder
+    // Cloud Function (Admin SDK — rules never apply to it) and by the client
+    // createNotification helper; a user may read and mark-as-read only their
+    // OWN notifications. The fields are validated so clients can't forge
+    // another user's entry.
+    function isValidNotificationCreate() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['userId', 'title', 'message', 'type', 'read',
+                               'createdAt'])
+        && d.userId == request.auth.uid
+        && isString(d.title, 1, 200)
+        && isString(d.message, 0, 1000)
+        && d.type in ['med', 'event', 'general']
+        && d.read is bool
+        && d.createdAt is timestamp;
+    }
+
+    // Clients may only flip their own notification's read flag.
+    function isValidNotificationUpdate() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['read'])
+        && d.read is bool
+        && resource.data.userId == request.auth.uid;
+    }
+
     match /notifications/{notifId} {
-      allow read: if false;
-      allow write: if false;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidNotificationCreate();
+      allow update: if isAuthenticated() && isValidNotificationUpdate();
+      allow delete: if false;
     }
   }
 }
