@@ -14,6 +14,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
+import MobileCalendar from "@/components/calendar/MobileCalendar";
 import { CalendarDays, Plus, X, Clock, MapPin, Stethoscope, Pill, Calendar, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { format, addDays, startOfWeek, isSameMonth, isToday } from "date-fns";
@@ -112,6 +113,8 @@ export default function CalendarPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Desktop view — existing code, unchanged */}
+      <div className="hidden md:block">
       <Navbar />
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
@@ -366,6 +369,25 @@ export default function CalendarPage() {
             </div>
           )}
         </div>
+      </div>
+      </div>
+
+      {/* Mobile view — native app UI (mobile only) */}
+      <div className="md:hidden">
+        <MobileCalendar
+          user={user}
+          events={events}
+          familyGroup={familyGroup}
+          weekDays={weekDays}
+          currentMonth={currentMonth}
+          setCurrentMonth={setCurrentMonth}
+          showAdd={showAdd}
+          setShowAdd={setShowAdd}
+          newEvent={newEvent}
+          setNewEvent={setNewEvent}
+          onAddEvent={addEvent}
+          onMarkAttended={markAttended}
+        />
       </div>
     </div>
   );
