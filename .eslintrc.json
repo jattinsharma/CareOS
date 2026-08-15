@@ -1,3 +1,9 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "parser": "./node_modules/next/dist/compiled/babel/eslint-parser.js",
+  "parserOptions": {
+    "babelOptions": {
+      "presets": ["./node_modules/next/babel.js"]
+    }
+  }
 }

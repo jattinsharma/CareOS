@@ -13,6 +13,8 @@ import {
   limit,
 } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
+import FeedbackModal from "@/components/FeedbackModal";
+import MobileDashboard from "@/components/dashboard/MobileDashboard";
 import {
   Pill,
   CalendarDays,
@@ -49,6 +51,7 @@ export default function Dashboard() {
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [notifDenied, setNotifDenied] = useState(false);
   const [notifReady, setNotifReady] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const medsRef = useRef(medications);
   const lastNotifiedRef = useRef({});
   const lastOverdueNudgeRef = useRef({});
@@ -311,6 +314,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Desktop view — existing code, unchanged */}
+      <div className="hidden md:block">
       <Navbar />
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8 flex items-start justify-between gap-4">
@@ -520,7 +525,10 @@ export default function Dashboard() {
               <p className="text-rose-100 text-sm leading-relaxed mb-4">
                 KinOS is completely free during beta. Help us build the best care coordination tool and get lifetime free access.
               </p>
-              <button className="bg-white text-rose-600 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-rose-50 transition-colors w-full">
+              <button
+                onClick={() => setFeedbackOpen(true)}
+                className="bg-white text-rose-600 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-rose-50 transition-colors w-full"
+              >
                 Share Feedback
               </button>
             </div>
@@ -592,6 +600,21 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      </div>
+
+      {/* Mobile view — native app UI (mobile only) */}
+      <div className="md:hidden">
+        <MobileDashboard
+          user={user}
+          familyGroup={familyGroup}
+          medications={medications}
+          events={events}
+          todayMeds={todayMeds}
+          upcomingEvents={upcomingEvents}
+        />
+      </div>
+
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }
