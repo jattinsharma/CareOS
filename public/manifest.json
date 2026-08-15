@@ -2,7 +2,7 @@
   "name": "KinOS - Family Care Coordination",
   "short_name": "KinOS",
   "description": "One shared space for medications, appointments, documents, and communication.",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "id": "/",
   "display": "standalone",
   "background_color": "#fafafc",
