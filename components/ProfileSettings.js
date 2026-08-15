@@ -135,7 +135,15 @@ export default function ProfileSettings() {
     try {
       const res = await enableNotifications(user);
       if (res.permission === "granted") {
-        setProfile((p) => ({ ...p, notificationsEnabled: true }));
+        // Mirror BOTH persisted fields into local state — notificationsEnabled
+        // alone is not enough: the derived `notificationsEnabled` check also
+        // requires a truthy fcmToken, so without it the toggle would keep
+        // showing "Reminders are off" until the page reloads.
+        setProfile((p) => ({
+          ...p,
+          fcmToken: res.token || p.fcmToken,
+          notificationsEnabled: true,
+        }));
         toast.success("Medication reminders enabled for this device");
       } else {
         toast.error(
