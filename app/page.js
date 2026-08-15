@@ -143,7 +143,7 @@ const features = [
   {
     icon: Smartphone,
     title: "Install as App",
-    desc: "Add KinOS to any home screen for quick, offline-ready access — just like a native app.",
+    desc: "Add KinOS to any home screen for quick access — just like a native app.",
   },
 ];
 

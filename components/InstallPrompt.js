@@ -113,7 +113,7 @@ export default function InstallPrompt() {
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">Install KinOS</p>
             <p className="mt-0.5 text-xs text-slate-500">
-              Add KinOS to your home screen for quick, offline-ready access.
+              Add KinOS to your home screen for quick access.
             </p>
           </div>
         </div>
