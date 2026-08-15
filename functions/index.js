@@ -1,19 +1,32 @@
-// Scheduled medication-reminder notifications.
+// Scheduled medication-reminder notifications with family escalation.
 //
-// Runs every minute. For each user with a registered FCM web push token it
-// computes the CURRENT local time (IANA timezone stored on /users/{uid} by the
-// client), finds their medications scheduled for exactly that HH:MM, skips
-// doses already logged "taken" today (or off-schedule per the med's
-// frequency), and pushes one FCM notification per dose — to the PATIENT's
-// device (the med's ownerUid), even when a caregiver added the med.
+// Runs every minute. Scheduling is timezone-aware: each user stores their IANA
+// timezone on /users/{uid} (saved by the client when they enable
+// notifications), and a med's `times` ("HH:MM") is compared against the
+// PATIENT's local clock — so reminders fire at the right local moment even
+// when a caregiver added the med or the family spans timezones.
 //
-// One notification per dose per day: the /notifications/{medId}_{date} doc is
-// the "sent" marker, so an untaken dose isn't re-nagged every minute.
+// Three stages per run:
+//   Stage 1 — Early reminder       (5 min before the dose time, patient only)
+//   Stage 2 — Due alert            (at the dose time, patient only; creates
+//                                   the pendingConfirmation that gates the
+//                                   escalation)
+//   Stage 3 — Missed escalation    (10 min after an unconfirmed due dose,
+//                                   sent to the patient AND every family
+//                                   member via messaging.sendEach)
+//
+// Idempotency: every patient push is guarded by a "sent" marker doc under
+// /notifications/{medId}_{dateKey} (with a `_early` suffix for Stage 1), and
+// each escalation is guarded by the pendingConfirmation's `escalationSent`
+// flag — so the function is stateless and safe to retry, and an untaken dose
+// is never nagged more than once per stage. Marking a dose "taken" from the
+// app flips the confirmation to confirmed=true, which suppresses Stage 3.
 //
 // Deployment requirements (flag these):
 //   - Cloud Functions + Cloud Scheduler need the Blaze (pay-as-you-go) plan.
 //   - FCM web push is not supported on iOS Safari (works on Android Chrome
 //     and desktop Chrome/Edge/Firefox).
+//   - Deploy rules + indexes too: firebase deploy --only firestore:rules,firestore:indexes
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { logger } = require("firebase-functions/v2");
@@ -25,25 +38,35 @@ initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
 
-const FREQUENCY_LABELS = {
-  Daily: "Daily",
-  "Twice daily": "Twice daily",
-  "every-2-days": "Every 2 days",
-  "every-3-days": "Every 3 days",
-  Weekly: "Weekly",
-  "As needed": "As needed",
-};
-
 const DAY_MS = 24 * 60 * 60 * 1000;
+const EARLY_BEFORE_MINUTES = 5;
+const ESCALATION_AFTER_MINUTES = 10;
 
-// "22:30" -> "10:30 PM" (mirrors lib/medUtils.formatTime12h)
-function formatTime12h(time24) {
-  if (!time24) return "";
-  const [h, m] = time24.split(":").map(Number);
-  if (Number.isNaN(h)) return "";
-  const period = h >= 12 ? "PM" : "AM";
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
+// A token that FCM reports as dead — the user uninstalled, cleared site data,
+// or revoked the subscription. Drop it from the user doc so we stop trying.
+function isDeadTokenCode(code) {
+  return (
+    code === "messaging/registration-token-not-registered" ||
+    code === "messaging/invalid-argument"
+  );
+}
+
+// Current local "HH:MM" in the given IANA timezone (24-hour, zero-padded).
+function localTimeHHMM(tz, now = new Date()) {
+  try {
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const parts = fmt.formatToParts(now);
+    const hour = parts.find((p) => p.type === "hour")?.value || "00";
+    const minute = parts.find((p) => p.type === "minute")?.value || "00";
+    return `${hour === "24" ? "00" : hour}:${minute}`;
+  } catch {
+    return null;
+  }
 }
 
 // 'yyyy-MM-dd' key in the given IANA timezone (en-CA formats as ISO).
@@ -91,56 +114,42 @@ function isScheduledOn(med, dateKey, tz) {
   return false; // "As needed" is never required
 }
 
-// Current local "HH:MM" in the given IANA timezone (24-hour, zero-padded).
-function localTimeHHMM(tz, now = new Date()) {
-  try {
-    const fmt = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    const parts = fmt.formatToParts(now);
-    const hour = parts.find((p) => p.type === "hour")?.value || "00";
-    const minute = parts.find((p) => p.type === "minute")?.value || "00";
-    return `${hour === "24" ? "00" : hour}:${minute}`;
-  } catch {
-    return null;
+// Load every user with a registered push token (token holders only — users
+// without a token can't be pushed to). Timezone is NOT filtered here because
+// family members only need a token to RECEIVE escalations; the per-user
+// timezone check happens inside the patient-push stage where it matters.
+async function loadPushableUsers() {
+  const users = new Map();
+  let noTimezone = 0;
+  const snap = await db.collection("users").get();
+  for (const userDoc of snap.docs) {
+    const data = userDoc.data();
+    if (!data.fcmToken || data.notificationsEnabled === false) continue;
+    users.set(userDoc.id, data);
+    if (!data.timezone) noTimezone++;
   }
+  return { users, noTimezone };
 }
 
-exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
-  const now = new Date();
+// Stages 1 + 2: send the patient-only reminder for doses scheduled
+// `offsetMin` from `now`:
+//   offsetMin = EARLY_BEFORE_MINUTES -> Stage 1 (early, 5 min before)
+//   offsetMin = 0                    -> Stage 2 (due, at dose time)
+// Stage 2 additionally creates the pendingConfirmation that gates escalation.
+// Each push is guarded by a marker doc so a run can never double-send.
+async function runPatientPushStage(users, now, offsetMin, { early }) {
+  const target = new Date(now.getTime() + offsetMin * 60 * 1000);
 
-  // 1. Every user with a registered token + timezone, keyed by uid, plus a
-  //    map of local "HH:MM" -> user uids so we run ONE medications query per
-  //    distinct time instead of one per user.
-  const users = new Map();
+  // Users grouped by their local "HH:MM" AT THE TARGET time, so one
+  // medications query runs per distinct time instead of one per user.
   const byTime = new Map();
-  let noTimezone = 0;
-
-  const usersSnap = await db.collection("users").get();
-  for (const snap of usersSnap.docs) {
-    const data = snap.data();
-    if (!data.fcmToken || data.notificationsEnabled === false) continue;
-    if (!data.timezone) {
-      // The client saves the timezone with the token; until it does, we can't
-      // know the patient's local time, so skip rather than fire at the wrong
-      // moment.
-      noTimezone++;
-      continue;
-    }
-    users.set(snap.id, data);
-    const hhmm = localTimeHHMM(data.timezone, now);
+  for (const [uid, data] of users) {
+    if (!data.timezone) continue;
+    const hhmm = localTimeHHMM(data.timezone, target);
     if (!hhmm) continue;
     const list = byTime.get(hhmm) || [];
-    list.push(snap.id);
+    list.push(uid);
     byTime.set(hhmm, list);
-  }
-
-  if (users.size === 0) {
-    logger.info(`checkMedicationReminders: no token-bearing users (noTimezone=${noTimezone})`);
-    return;
   }
 
   let sent = 0;
@@ -150,7 +159,7 @@ exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
   let failed = 0;
   const sentKeys = new Set(); // in-run dedup (defensive)
 
-  for (const [hhmm, userIds] of byTime) {
+  for (const [hhmm] of byTime) {
     const medSnap = await db
       .collection("medications")
       .where("times", "==", hhmm)
@@ -164,14 +173,14 @@ exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
       // the caregiver scenario from the spec.
       const patientUid = med.ownerUid || med.createdBy;
       const patient = users.get(patientUid);
-      if (!patient) continue; // patient's device isn't registered for push
+      if (!patient?.fcmToken || !patient.timezone) continue;
 
-      // A med matching this query batch's HH:MM is only due for THIS patient
-      // when their own local clock also reads HH:MM right now (same med can
-      // surface in another timezone's batch).
-      if (localTimeHHMM(patient.timezone, now) !== hhmm) continue;
+      // A med matching this batch's HH:MM is only due for THIS patient when
+      // their own local clock reads the same time at the target instant (the
+      // same med can surface in another timezone's batch).
+      if (localTimeHHMM(patient.timezone, target) !== hhmm) continue;
 
-      const dateKey = dateKeyInTz(patient.timezone, now);
+      const dateKey = dateKeyInTz(patient.timezone, target);
       if (!dateKey) continue;
 
       // Respect the med's schedule (every-2-days / weekly / etc.).
@@ -180,7 +189,9 @@ exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
         continue;
       }
 
-      // Already marked taken today?
+      // Already marked taken on the dose date? Then no reminder is needed —
+      // and for Stage 2, no pendingConfirmation is created either, so a dose
+      // taken before its due time can never escalate.
       const takenToday = (med.logs || []).some(
         (l) => l && l.date === dateKey && l.taken
       );
@@ -189,8 +200,11 @@ exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
         continue;
       }
 
-      // One push per dose per day — the notifications doc is the sent marker.
-      const notifId = `${medDoc.id}_${dateKey}`;
+      // One push per dose per day per stage — the notifications doc is the
+      // sent marker (and doubles as the user's inbox record).
+      const notifId = early
+        ? `${medDoc.id}_${dateKey}_early`
+        : `${medDoc.id}_${dateKey}`;
       if (sentKeys.has(notifId)) continue;
       const notifRef = db.doc(`notifications/${notifId}`);
       const existing = await notifRef.get();
@@ -199,24 +213,27 @@ exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
         continue;
       }
 
-      const title = `Time for your ${med.name || "medication"}`;
-      const label = FREQUENCY_LABELS[med.frequency] || med.frequency || "";
-      const timeLabel = formatTime12h(med.times);
-      const body = [
-        med.dosage ? String(med.dosage) : "",
-        label ? `${label} at ${timeLabel}` : timeLabel,
-      ]
-        .filter(Boolean)
-        .join(" • ");
+      const title = early
+        ? "💊 Upcoming Medication"
+        : "⏰ Time to Take Your Medication";
+      const medName = med.name || "Medication";
+      const dose = med.dosage || "dose";
+      const body = early
+        ? `${medName} (${dose}) in 5 minutes`
+        : `${medName} (${dose}) — take it now!`;
 
       try {
         await messaging.send({
           token: patient.fcmToken,
           notification: { title, body },
           data: {
-            url: "/medications",
+            type: early ? "early_reminder" : "due_reminder",
             medicationId: medDoc.id,
-            dateKey,
+            ...(early ? { medicationName: medName } : {}),
+          },
+          android: { priority: "high" },
+          apns: {
+            payload: { aps: { sound: "default", ...(early ? {} : { badge: 1 }) } },
           },
           webpush: {
             notification: {
@@ -226,6 +243,7 @@ exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
             },
           },
         });
+
         await notifRef.set({
           userId: patientUid,
           medicationId: medDoc.id,
@@ -237,14 +255,34 @@ exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
         });
         sentKeys.add(notifId);
         sent++;
-        logger.info(`Sent reminder "${title}" to ${patientUid}`);
+        logger.info(`Sent ${early ? "early " : ""}reminder "${title}" to ${patientUid}`);
+
+        // Stage 2: create the escalation gate for this dose. merge:true keeps
+        // `confirmed` if the client already flipped it (it can't exist yet in
+        // the normal flow — the marker guard above prevents re-entry).
+        if (!early) {
+          await db
+            .doc(`pendingConfirmations/${medDoc.id}_${dateKey}`)
+            .set(
+              {
+                userId: patientUid,
+                medicationId: medDoc.id,
+                medicationName: medName,
+                dosage: med.dosage || "",
+                scheduledTime: target,
+                familyGroupId: med.familyGroupId || "",
+                dueReminderSent: true,
+                confirmed: false,
+                escalationSent: false,
+                createdAt: FieldValue.serverTimestamp(),
+              },
+              { merge: true }
+            );
+        }
       } catch (err) {
         failed++;
         const code = err?.errorInfo?.code || err?.code || "";
-        if (
-          code === "messaging/registration-token-not-registered" ||
-          code === "messaging/invalid-argument"
-        ) {
+        if (isDeadTokenCode(code)) {
           // Token is stale — drop it so we stop trying a dead device.
           await db
             .doc(`users/${patientUid}`)
@@ -259,9 +297,157 @@ exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
     }
   }
 
+  return { sent, skippedTaken, skippedOffSchedule, skippedAlreadySent, failed };
+}
+
+// Stage 3 — 10 minutes after an unconfirmed due dose, notify the patient AND
+// every family member (each with a valid token) so someone can step in.
+async function runEscalationStage(users, now) {
+  const cutoff = new Date(now.getTime() - ESCALATION_AFTER_MINUTES * 60 * 1000);
+  let escalated = 0;
+  let noRecipients = 0;
+  let staleTokens = 0;
+
+  let snap;
+  try {
+    snap = await db
+      .collection("pendingConfirmations")
+      .where("confirmed", "==", false)
+      .where("escalationSent", "==", false)
+      .where("scheduledTime", "<=", cutoff)
+      .get();
+  } catch (err) {
+    logger.error(
+      `pendingConfirmations query failed (is the composite index deployed?): ${err.message}`
+    );
+    return { escalated, noRecipients, staleTokens };
+  }
+  if (snap.empty) return { escalated, noRecipients, staleTokens };
+
+  for (const pcDoc of snap.docs) {
+    const pc = pcDoc.data();
+    const patient = users.get(pc.userId);
+
+    // Recipients = patient + every family member with a token (deduped by
+    // token). `notificationsEnabled === false` opts a device out, matching
+    // the patient-push stages.
+    const recipients = new Map(); // token -> uid
+    if (patient?.fcmToken && patient.notificationsEnabled !== false) {
+      recipients.set(patient.fcmToken, pc.userId);
+    }
+    if (pc.familyGroupId) {
+      let group = null;
+      try {
+        const g = await db.doc(`familyGroups/${pc.familyGroupId}`).get();
+        group = g.exists ? g.data() : null;
+      } catch {
+        group = null; // missing/invalid family — escalate to the patient alone
+      }
+      for (const memberUid of group?.members || []) {
+        if (memberUid === pc.userId) continue;
+        const member = users.get(memberUid);
+        if (!member?.fcmToken || member.notificationsEnabled === false) continue;
+        recipients.set(member.fcmToken, memberUid);
+      }
+    }
+
+    if (recipients.size === 0) {
+      noRecipients++;
+      logger.warn(`Escalation skipped for ${pc.userId}: no valid FCM tokens`);
+      continue;
+    }
+
+    const patientName = patient?.displayName || "A family member";
+    const medLabel = pc.medicationName || "A medication";
+    const body = `${medLabel}${pc.dosage ? ` (${pc.dosage})` : ""} was not taken.`;
+
+    const recipientList = [...recipients.entries()];
+    const messages = recipientList.map(([token]) => ({
+      token,
+      notification: {
+        title: `⚠️ ${patientName} missed a medication`,
+        body,
+      },
+      data: {
+        type: "missed_escalation",
+        medicationId: pc.medicationId || "",
+        patientId: pc.userId,
+        patientName,
+        medicationName: pc.medicationName || "",
+      },
+      android: { priority: "high" },
+      apns: { payload: { aps: { sound: "default", badge: 1 } } },
+      webpush: {
+        notification: {
+          icon: "/icons/icon-192x192.png",
+          badge: "/icons/icon-192x192.png",
+          vibrate: [200, 100, 200],
+        },
+      },
+    }));
+
+    try {
+      // sendEach resolves per-message even when individual sends fail — only a
+      // transport-level error rejects. Handle each failure so one dead token
+      // can't block the rest of the family.
+      const res = await messaging.sendEach(messages);
+      for (let i = 0; i < res.responses.length; i++) {
+        const r = res.responses[i];
+        if (r.success) continue;
+        const err = r.error;
+        const code = err?.errorInfo?.code || err?.code || "";
+        const uid = recipientList[i][1];
+        logger.error(`Escalation send failed for ${uid}: ${code || err?.message}`);
+        if (isDeadTokenCode(code)) {
+          await db
+            .doc(`users/${uid}`)
+            .update({ fcmToken: FieldValue.delete() })
+            .catch(() => {});
+          staleTokens++;
+        }
+      }
+      await pcDoc.ref.update({ escalationSent: true });
+      escalated++;
+      logger.info(
+        `Escalated missed dose for ${pc.userId} (${medLabel}) to ${recipients.size} devices`
+      );
+    } catch (err) {
+      // Transport-level failure — leave escalationSent=false so the next run
+      // retries the whole escalation for this dose.
+      logger.error(`Escalation sendEach threw for ${pc.userId}: ${err.message}`);
+    }
+  }
+
+  return { escalated, noRecipients, staleTokens };
+}
+
+exports.checkMedicationReminders = onSchedule("every 1 minutes", async () => {
+  const now = new Date();
+
+  const { users, noTimezone } = await loadPushableUsers();
+  if (users.size === 0) {
+    logger.info(
+      `checkMedicationReminders: no token-bearing users (noTimezone=${noTimezone})`
+    );
+    return;
+  }
+
+  // Stage 1 — early reminder 5 minutes before the dose time.
+  const early = await runPatientPushStage(users, now, EARLY_BEFORE_MINUTES, {
+    early: true,
+  });
+  // Stage 2 — due alert at the dose time (+ pendingConfirmation gate).
+  const due = await runPatientPushStage(users, now, 0, { early: false });
+  // Stage 3 — missed-dose escalation to the patient + family.
+  const escalation = await runEscalationStage(users, now);
+
   logger.info(
-    `checkMedicationReminders: sent=${sent} skippedTaken=${skippedTaken} ` +
-      `skippedOffSchedule=${skippedOffSchedule} skippedAlreadySent=${skippedAlreadySent} ` +
-      `failed=${failed} noTimezone=${noTimezone}`
+    `checkMedicationReminders: early=${early.sent} due=${due.sent} ` +
+      `escalated=${escalation.escalated} (noRecipients=${escalation.noRecipients}, ` +
+      `staleTokens=${escalation.staleTokens}) ` +
+      `skippedTaken=${early.skippedTaken + due.skippedTaken} ` +
+      `skippedOffSchedule=${early.skippedOffSchedule + due.skippedOffSchedule} ` +
+      `skippedAlreadySent=${early.skippedAlreadySent + due.skippedAlreadySent} ` +
+      `failed=${early.failed + due.failed} noTimezone=${noTimezone}`
   );
 });

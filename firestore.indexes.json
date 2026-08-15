@@ -7,6 +7,15 @@
         { "fieldPath": "familyGroupId", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "pendingConfirmations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "confirmed", "order": "ASCENDING" },
+        { "fieldPath": "escalationSent", "order": "ASCENDING" },
+        { "fieldPath": "scheduledTime", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

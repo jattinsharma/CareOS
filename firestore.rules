@@ -87,6 +87,20 @@ service cloud.firestore {
     //   createdAt:      timestamp (serverTimestamp, client-created)
     //   read:           boolean (default false)
     //
+    // pendingConfirmations/{confId}   (missed-dose escalation gate,
+    //                                 system-created by the reminder function)
+    //   userId:         string (uid of the PATIENT the dose belongs to)
+    //   medicationId:   string (id of the medication)
+    //   medicationName: string (display name at due time)
+    //   dosage:         string (display dosage at due time)
+    //   scheduledTime:  timestamp (when the dose was due)
+    //   familyGroupId:  string (family group of the med — drives who gets
+    //                   the family escalation)
+    //   dueReminderSent:boolean (true — created alongside the due push)
+    //   confirmed:      boolean (true once the dose is logged as taken)
+    //   escalationSent: boolean (true once the missed-dose escalation fired)
+    //   createdAt:      timestamp (serverTimestamp)
+    //
     // messages/{messageId}
     //   familyGroupId:  string (required, IMMUTABLE)
     //   senderId:       string (uid, required, IMMUTABLE)
@@ -475,6 +489,28 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated() && isValidNotificationCreate();
       allow update: if isAuthenticated() && isValidNotificationUpdate();
+      allow delete: if false;
+    }
+
+    // ---------- pendingConfirmations ----------
+
+    // Missed-dose escalation tracking, created by the scheduled reminder
+    // Cloud Function (Admin SDK — rules never apply to it). Clients may only
+    // flip the `confirmed` flag on their own (or a family member's) pending
+    // confirmation when a dose is logged as taken — never create, delete, or
+    // un-confirm one.
+    match /pendingConfirmations/{confId} {
+      allow read: if isAuthenticated()
+        && (resource.data.userId == request.auth.uid
+            || (resource.data.familyGroupId is string
+                && isMember(resource.data.familyGroupId)));
+      allow create: if false;
+      allow update: if isAuthenticated()
+        && (resource.data.userId == request.auth.uid
+            || (resource.data.familyGroupId is string
+                && isMember(resource.data.familyGroupId)))
+        && request.resource.data.keys().hasOnly(['confirmed'])
+        && request.resource.data.confirmed is bool;
       allow delete: if false;
     }
   }

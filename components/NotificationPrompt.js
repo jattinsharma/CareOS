@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
 import toast from "react-hot-toast";
 import {
+  attachTokenRefreshListener,
   enableNotifications,
   ensureNotificationsEnabled,
   isMessagingSupported,
@@ -64,6 +65,14 @@ export default function NotificationPrompt() {
         err?.message || err
       );
     });
+  }, [user, supported]);
+
+  // The browser rotates the FCM token periodically — keep the stored token on
+  // /users/{uid} fresh so reminders keep arriving. Attached for the whole
+  // session (this component mounts in the Navbar) and cleaned up on unmount.
+  useEffect(() => {
+    if (!user || !supported) return undefined;
+    return attachTokenRefreshListener(user);
   }, [user, supported]);
 
   // Only nudge when the browser has never been asked (permission "default").
