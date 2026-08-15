@@ -23,11 +23,23 @@ import toast from "react-hot-toast";
 //   3. The worker calls skipWaiting() itself, so the new worker activates and
 //      claims the page (controllerchange) as soon as it installs.
 //   4. If we spot the new worker while it's still waiting, we show "Update
-//      available. Tap to refresh." — tapping posts SKIP_WAITING (for older
-//      workers that don't skip on install) and reloads. If the takeover
+//      available. Tap to install update." — tapping posts SKIP_WAITING (for
+//      older workers that don't skip on install) and reloads. If the takeover
 //      happens silently first, we reload automatically so the fresh build is
 //      what the user actually sees.
+//
+// The toast + auto-reload only fire for installed PWA users (standalone
+// display mode). Regular website visitors still get the worker registered
+// (it's required for install + FCM), but never see update prompts or forced
+// reloads — those would be noise on the marketing page.
 export default function PWAUpdater() {
+  // True when the app is running as an installed PWA (standalone window on
+  // Android/desktop Chrome, or iOS Safari's navigator.standalone).
+  const isStandalone =
+    typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true);
+
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
@@ -48,7 +60,9 @@ export default function PWAUpdater() {
     };
 
     const showUpdateToast = (waitingWorker) => {
-      if (disposed || toastShown) return;
+      // Only installed PWA users get update prompts — regular website
+      // visitors shouldn't see app-update toasts.
+      if (disposed || toastShown || !isStandalone) return;
       toastShown = true;
       toast(
         <button
@@ -63,7 +77,7 @@ export default function PWAUpdater() {
           }}
           className="flex items-center gap-1.5 text-sm font-medium"
         >
-          Update available. Tap to refresh.
+          Update available. Tap to install update.
         </button>,
         { id: "kinos-update-available", duration: Infinity }
       );
@@ -101,9 +115,11 @@ export default function PWAUpdater() {
 
         // The new worker took over (skipWaiting + clients.claim). If the user
         // hasn't been prompted yet, load the new build automatically. Skipped
-        // on first install (no previous worker to have replaced) and in dev.
+        // on first install (no previous worker to have replaced), in dev, and
+        // for non-standalone visitors (no forced reloads on the marketing
+        // page).
         navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (disposed || isDev) return;
+          if (disposed || isDev || !isStandalone) return;
           if (hadActiveWorker && sawUpdate && !toastShown) {
             reloadOnce();
           }
@@ -143,7 +159,10 @@ export default function PWAUpdater() {
       window.removeEventListener("focus", checkForUpdates);
       clearInterval(interval);
     };
-  }, []);
+    // isStandalone is stable for the session (display mode can't change at
+    // runtime), so the effect still runs exactly once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStandalone]);
 
   return null;
 }
