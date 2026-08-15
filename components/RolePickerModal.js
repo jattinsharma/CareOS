@@ -14,12 +14,15 @@ import { X, Users } from "lucide-react";
  *  - title:       heading (defaults to `Join ${familyName}`)
  *  - familyName:  family group name shown in the title
  *  - ctaLabel:    submit button text
- *  - closable:    allow dismissing (create/join/migration are not)
+ *  - closable:    allow dismissing (defaults to true; migration keeps it off)
  *  - submitting:  disable the button while the Firestore write is in flight
+ *  - allowNone:   render a "None" tile so members can join / save without a
+ *                 role label (submitted as "none")
  *  - onSkip:      when provided, renders a "Skip for now" ghost button next
  *                 to the CTA (used by the migration prompt so it can be
  *                 dismissed without picking a role)
- *  - onClose / onSelect(role) — role is the enum id or the custom "other" text
+ *  - onClose / onSelect(role) — role is the enum id, "none", or the custom
+ *                 "other" text
  */
 export default function RolePickerModal({
   open,
@@ -28,6 +31,7 @@ export default function RolePickerModal({
   ctaLabel = "Continue",
   closable = true,
   submitting = false,
+  allowNone = false,
   onClose,
   onSelect,
   onSkip,
@@ -117,6 +121,30 @@ export default function RolePickerModal({
               </button>
             );
           })}
+          {allowNone && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelected("none");
+                setError("");
+              }}
+              aria-pressed={selected === "none"}
+              className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-2 py-3.5 transition-all ${
+                selected === "none"
+                  ? "border-rose-400 bg-rose-50 ring-2 ring-rose-200"
+                  : "border-slate-200 bg-white hover:border-rose-200 hover:bg-rose-50/40"
+              }`}
+            >
+              <span className="text-2xl leading-none">🙅</span>
+              <span
+                className={`text-xs font-semibold ${
+                  selected === "none" ? "text-rose-700" : "text-slate-600"
+                }`}
+              >
+                None
+              </span>
+            </button>
+          )}
         </div>
 
         {selected === "other" && (

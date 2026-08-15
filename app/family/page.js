@@ -12,6 +12,7 @@ import {
   updateDoc,
   doc,
   arrayUnion,
+  deleteField,
 } from "firebase/firestore";
 import Navbar from "@/components/Navbar";
 import { Users, Copy, Check, Plus, UserPlus, Crown, Pencil } from "lucide-react";
@@ -136,38 +137,48 @@ export default function FamilyPage() {
   }
 
   // Step 2 for the join / edit flows: persist the chosen role (+ membership
-  // for joins). The create flow never reaches here (startCreate auto-sets
-  // the creator's "admin" role).
+  // for joins). "none" skips the role label entirely — a joiner still joins
+  // the group, and an edit clears the stored role entry. The create flow
+  // never reaches here (startCreate auto-sets the creator's "admin" role).
   async function handleRoleSelect(role) {
     setSavingRole(true);
+    const isNone = role === "none";
     const name = user.displayName || user.email?.split("@")[0] || "Member";
     const entry = { role, name };
     try {
       if (roleModal.mode === "join") {
         const groupData = roleModal.data;
         // Field-path write so a concurrent join can never clobber another
-        // member's freshly-written role entry (atomic per key).
-        await updateDoc(doc(db, "familyGroups", roleModal.id), {
-          members: arrayUnion(user.uid),
-          [`memberRoles.${user.uid}`]: entry,
-        });
+        // member's freshly-written role entry (atomic per key). Joining with
+        // "none" omits the role entry — the member is role-less until they
+        // set one later.
+        const update = { members: arrayUnion(user.uid) };
+        if (!isNone) update[`memberRoles.${user.uid}`] = entry;
+        await updateDoc(doc(db, "familyGroups", roleModal.id), update);
         setFamilyGroup({
           id: roleModal.id,
           ...groupData,
           members: [...groupData.members, user.uid],
-          memberRoles: { ...(groupData.memberRoles || {}), [user.uid]: entry },
+          memberRoles: isNone
+            ? groupData.memberRoles || {}
+            : { ...(groupData.memberRoles || {}), [user.uid]: entry },
         });
         loadMeds({ id: roleModal.id });
         toast.success("Joined family group!");
       } else {
-        await updateDoc(doc(db, "familyGroups", familyGroup.id), {
-          [`memberRoles.${user.uid}`]: entry,
+        // Edit flow: "none" clears the stored role entry (member becomes
+        // role-less, "Set my role" returns).
+        const update = isNone
+          ? { [`memberRoles.${user.uid}`]: deleteField() }
+          : { [`memberRoles.${user.uid}`]: entry };
+        await updateDoc(doc(db, "familyGroups", familyGroup.id), update);
+        setFamilyGroup((g) => {
+          const memberRoles = { ...(g.memberRoles || {}) };
+          if (isNone) delete memberRoles[user.uid];
+          else memberRoles[user.uid] = entry;
+          return { ...g, memberRoles };
         });
-        setFamilyGroup((g) => ({
-          ...g,
-          memberRoles: { ...(g.memberRoles || {}), [user.uid]: entry },
-        }));
-        toast.success("Role saved!");
+        toast.success(isNone ? "Role cleared" : "Role saved!");
       }
       setRoleModal(null);
     } catch {
@@ -412,8 +423,10 @@ export default function FamilyPage() {
             : "Tell us who you are"
         }
         ctaLabel={roleModal?.mode === "join" ? "Join Family" : "Save"}
-        closable={false}
+        closable
+        allowNone
         submitting={savingRole}
+        onClose={() => setRoleModal(null)}
         onSelect={handleRoleSelect}
       />
     </div>
