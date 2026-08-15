@@ -71,8 +71,9 @@ export function AuthProvider({ children }) {
     if (name) {
       try {
         await updateProfile(credential.user, { displayName: name });
-      } catch {
+      } catch (err) {
         // Display name is cosmetic — don't block signup if it fails.
+        console.error("updateProfile failed (display name not saved):", err);
       }
     }
     saveAttribution(credential.user.uid);

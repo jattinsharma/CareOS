@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -45,28 +45,49 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
+  // Separate loading states so a hung/cancelled Google popup can never disable
+  // the email form (and vice versa).
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  // Fallback message if the email form has been submitting for >10s.
+  const [stuck, setStuck] = useState(false);
+
+  useEffect(() => {
+    if (!emailLoading) {
+      setStuck(false);
+      return;
+    }
+    const timer = setTimeout(() => setStuck(true), 10000);
+    return () => clearTimeout(timer);
+  }, [emailLoading]);
 
   async function handleGoogle() {
-    setLoading(true);
+    setGoogleLoading(true);
     try {
       await loginWithGoogle();
       toast.success("Signed in with Google!");
       router.push("/dashboard");
     } catch (err) {
+      console.error("Google sign-in error:", err);
+      console.error("Error code:", err?.code, "Message:", err?.message);
       toast.error(friendlyAuthError(err));
     } finally {
-      setLoading(false);
+      console.log("Google finally running");
+      setGoogleLoading(false);
     }
   }
 
   async function handleEmailSubmit(e) {
     e.preventDefault();
+    console.log("Form submitted, tab:", tab);
+    console.log("Name:", name, "Email:", email, "Password length:", password?.length);
+    console.log("Loading before:", { googleLoading, emailLoading });
+
     if (!email || !password) {
       toast.error("Please fill in all fields.");
       return;
     }
-    setLoading(true);
+    setEmailLoading(true);
     try {
       if (tab === "signin") {
         await loginWithEmail(email, password);
@@ -74,7 +95,7 @@ export default function LoginPage() {
       } else {
         if (!name) {
           toast.error("Please enter your name.");
-          setLoading(false);
+          setEmailLoading(false);
           return;
         }
         await signupWithEmail(email, password, name);
@@ -82,9 +103,12 @@ export default function LoginPage() {
       }
       router.push("/dashboard");
     } catch (err) {
+      console.error("Signup error:", err);
+      console.error("Error code:", err?.code, "Message:", err?.message);
       toast.error(friendlyAuthError(err));
     } finally {
-      setLoading(false);
+      console.log("finally running");
+      setEmailLoading(false);
     }
   }
 
@@ -209,7 +233,7 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={emailLoading}
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-rose-200 transition-all hover:bg-rose-600 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {tab === "signin" ? "Sign in" : "Create account"}
@@ -217,6 +241,11 @@ export default function LoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </button>
+              {stuck && (
+                <p className="text-center text-xs font-medium text-amber-600">
+                  Stuck? Refresh the page and try again.
+                </p>
+              )}
             </form>
 
             {/* Divider */}
@@ -230,7 +259,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleGoogle}
-              disabled={loading}
+              disabled={googleLoading}
               className="mt-6 w-full flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
