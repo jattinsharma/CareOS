@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { motion, AnimatePresence, MotionConfig, useInView, animate } from "framer-motion";
 import {
-  Heart,
   Pill,
   CalendarDays,
   FolderOpen,
@@ -286,9 +286,14 @@ export default function LandingPage() {
         >
           <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4" aria-label="Main">
             <a href="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 shadow-sm shadow-rose-200">
-                <Heart className="h-5 w-5 text-white" fill="white" />
-              </div>
+              <Image
+                src="/icons/kinos-logo.png"
+                alt="KinOS"
+                width={36}
+                height={36}
+                className="rounded-lg object-cover"
+                priority
+              />
               <span className="text-xl font-bold tracking-tight">KinOS</span>
             </a>
 
@@ -920,9 +925,13 @@ export default function LandingPage() {
             <div className="flex flex-col items-center justify-between gap-10 md:flex-row">
               <div className="flex flex-col items-center gap-3 text-center md:items-start md:text-left">
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 shadow-sm shadow-rose-900/40">
-                    <Heart className="h-5 w-5 text-white" fill="white" />
-                  </div>
+                  <Image
+                    src="/icons/kinos-logo.png"
+                    alt="KinOS"
+                    width={36}
+                    height={36}
+                    className="rounded-lg object-cover"
+                  />
                   <span className="text-xl font-bold tracking-tight text-white">KinOS</span>
                 </div>
                 <p className="text-sm leading-relaxed text-slate-400">
