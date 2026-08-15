@@ -186,7 +186,19 @@ export async function GET() {
     ? JSON.stringify(env)
     : "null";
 
-  const sw = CACHING_WORKER + "\n" + FCM_WORKER(configJson);
+  // Deploy fingerprint. The browser only installs a new service worker when
+  // the script bytes change, so embedding a unique-per-deploy id here is what
+  // lets installed PWAs pick up new releases without a reinstall. Stable
+  // within a deployment (never a per-request timestamp, which would make every
+  // update check look like a new version and cause reload churn).
+  const deployId =
+    process.env.NEXT_PUBLIC_KINOS_BUILD_ID ||
+    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    "local-dev";
+  const deployMarker = `\n// Deploy id: ${JSON.stringify(deployId)} — changes on every deploy.\n`;
+
+  const sw = deployMarker + CACHING_WORKER + "\n" + FCM_WORKER(configJson);
 
   return new Response(sw, {
     headers: {
