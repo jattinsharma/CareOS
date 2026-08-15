@@ -1,10 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import {
-  Heart,
   Menu,
   X,
   ClipboardList,
@@ -133,9 +133,14 @@ export default function MobileDashboard({
           className="flex items-center gap-2.5 cursor-pointer select-none"
           onClick={() => router.push("/dashboard")}
         >
-          <div className="w-9 h-9 bg-rose-500 rounded-lg flex items-center justify-center shadow-sm shadow-rose-200">
-            <Heart className="w-5 h-5 text-white" fill="white" />
-          </div>
+          <Image
+            src="/icons/kinos-logo.png"
+            alt="KinOS"
+            width={36}
+            height={36}
+            className="w-9 h-9 rounded-lg object-cover"
+            priority
+          />
           <span className="font-bold text-lg text-slate-900 tracking-tight">KinOS</span>
         </div>
 
