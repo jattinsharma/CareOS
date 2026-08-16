@@ -4,7 +4,7 @@
       "emailPassword": true,
       "googleSignIn": {
         "oAuthBrandDisplayName": "KinOS",
-        "supportEmail": "support@careos.app"
+        "supportEmail": "support@kinos.app"
       }
     }
   },
