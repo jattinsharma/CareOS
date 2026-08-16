@@ -14,8 +14,8 @@ export const metadata = {
   description: "One shared space for medications, appointments, documents, and communication. Built for families caring for aging parents or managing chronic conditions.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icons/icon-192x192.png",
-    apple: "/icons/apple-touch-icon.png",
+    icon: "/icons/icon-192-v2.png",
+    apple: "/icons/apple-touch-icon-v2.png",
   },
   appleWebApp: {
     capable: true,

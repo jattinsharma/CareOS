@@ -106,9 +106,11 @@ function drawIcon(size, factor, filename) {
 mkdirSync(OUT_DIR, { recursive: true });
 console.log("Generating KinOS PWA icons...");
 
-// Regular icons: heart fills ~65% of the canvas.
-drawIcon(192, 3.6, "icon-192x192.png");
-drawIcon(512, 3.6, "icon-512x512.png");
+// Regular icons: heart fills ~65% of the canvas. Versioned filenames so
+// installed PWAs (which cache icons aggressively, especially iOS) pick up
+// changes on re-install — never reuse a previously-shipped filename.
+drawIcon(192, 3.6, "icon-192-v2.png");
+drawIcon(512, 3.6, "icon-512-v2.png");
 
 // Maskable icons: heart kept well inside the 80% safe-zone circle.
 drawIcon(192, 5.4, "maskable-icon-192x192.png");

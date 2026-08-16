@@ -237,8 +237,8 @@ async function runPatientPushStage(users, now, offsetMin, { early }) {
           },
           webpush: {
             notification: {
-              icon: "/icons/icon-192x192.png",
-              badge: "/icons/icon-192x192.png",
+              icon: "/icons/icon-192-v2.png",
+              badge: "/icons/icon-192-v2.png",
               vibrate: [200, 100, 200],
             },
           },
@@ -379,8 +379,8 @@ async function runEscalationStage(users, now) {
       apns: { payload: { aps: { sound: "default", badge: 1 } } },
       webpush: {
         notification: {
-          icon: "/icons/icon-192x192.png",
-          badge: "/icons/icon-192x192.png",
+          icon: "/icons/icon-192-v2.png",
+          badge: "/icons/icon-192-v2.png",
           vibrate: [200, 100, 200],
         },
       },

@@ -2,7 +2,7 @@
   "name": "KinOS - Family Care Coordination",
   "short_name": "KinOS",
   "description": "One shared space for medications, appointments, documents, and communication.",
-  "start_url": "/dashboard",
+  "start_url": "/dashboard?v=2",
   "id": "/",
   "display": "standalone",
   "background_color": "#fafafc",
@@ -10,8 +10,8 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [
-    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-192-v2.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512-v2.png", "sizes": "512x512", "type": "image/png" },
     { "src": "/icons/maskable-icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/icons/maskable-icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]

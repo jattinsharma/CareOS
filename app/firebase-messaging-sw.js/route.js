@@ -143,8 +143,8 @@ if (FIREBASE_CONFIG) {
     const body = (payload.notification && payload.notification.body) || data.body || "";
     return self.registration.showNotification(title, {
       body,
-      icon: "/icons/icon-192x192.png",
-      badge: "/icons/icon-192x192.png",
+      icon: "/icons/icon-192-v2.png",
+      badge: "/icons/icon-192-v2.png",
       vibrate: [200, 100, 200],
       tag: data.medicationId || "kinos-reminder", // same dose replaces, never stacks
       data: Object.assign({ url: "/medications" }, data),
