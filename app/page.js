@@ -208,10 +208,17 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState(null);
   const [scrolled, setScrolled] = useState(false);
 
-  // No auto-redirect here: an immediate router.replace on mount can crash the
-  // Android WebAPK ("failed to start"). Logged-in users stay on the landing
-  // page and use the "Go to Dashboard" button (see nav + hero below).
-  // (The logged-out guard for protected routes still lives in AuthGate.)
+  // Server-side redirect happens in middleware.js using the kinos_session
+  // cookie, so logged-in users never even see this page render. This client
+  // fallback only covers the rare edge case where Firebase has a live session
+  // but the cookie is missing/expired (e.g. past the 30-day cookie lifetime):
+  // once Firebase confirms the user, send them to the dashboard. We never
+  // redirect while auth is still initializing — an immediate router.replace
+  // during that window can crash the Android WebAPK ("failed to start").
+  useEffect(() => {
+    if (loading) return;
+    if (user) router.replace("/dashboard");
+  }, [loading, user, router]);
 
   // Navbar shadow + extra blur once the user scrolls.
   useEffect(() => {
@@ -264,6 +271,18 @@ export default function LandingPage() {
 
   const sectionLabel =
     "text-xs font-semibold uppercase tracking-[0.2em] text-rose-500";
+
+  // Never render marketing content to a logged-in user: show a spinner while
+  // Firebase auth initializes and while the confirmed-user redirect is in
+  // flight. The marketing page below only renders for logged-out visitors.
+  // (Placed after all hooks so the rules of hooks are respected.)
+  if (loading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="h-8 w-8 animate-spin rounded-full border-3 border-rose-200 border-t-rose-500" />
+      </div>
+    );
+  }
 
   return (
     <MotionConfig reducedMotion="user">

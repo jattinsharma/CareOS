@@ -51,6 +51,21 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
+
+      // kinos_session is ONLY a routing hint for middleware.js ("this device
+      // had a logged-in user"). It never contains the Firebase ID token —
+      // that stays client-side and expires hourly. Middleware reads it to
+      // redirect logged-in users off the landing/login pages before they
+      // render; Firebase itself remains the source of truth.
+      if (typeof window !== "undefined") {
+        if (currentUser) {
+          document.cookie =
+            "kinos_session=true; path=/; max-age=2592000; SameSite=Lax";
+        } else {
+          // Explicit logout (or an expired/stale session) clears the hint.
+          document.cookie = "kinos_session=; path=/; max-age=0";
+        }
+      }
     });
     return () => unsubscribe();
   }, []);
